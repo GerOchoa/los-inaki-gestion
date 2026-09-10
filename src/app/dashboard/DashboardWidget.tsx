@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { DashRow } from "@/lib/dashboard/transform";
+import Link from "next/link";
 import {
   MONTHS,
   PAGE_CONFIG,
@@ -58,7 +59,12 @@ export default function DashboardWidget({
             <h1>Tablero Gerencial — Los Iñaki</h1>
             <p className="sub">GOP, ingresos, gastos e insights mensuales para la reunión de gestión.</p>
           </div>
-          <div className="status">Datos de Supabase · actualizado {lastUpdated}</div>
+          <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+            <div className="status">Datos de Supabase · actualizado {lastUpdated}</div>
+            <Link className="btn light" href="/formularios/gasto">
+              ← Cargar datos
+            </Link>
+          </div>
         </div>
       </div>
 
