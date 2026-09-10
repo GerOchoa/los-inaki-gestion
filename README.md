@@ -2,6 +2,8 @@
 
 App interna para cargar gastos y ventas de la hotelería/gastronomía "Los Iñaki"
 y ver un tablero gerencial (GOP, ingresos, gastos, insights) con datos reales.
+Datos ficticios:
+marcos@losinaki.local - marcos12.
 
 ## Stack
 
