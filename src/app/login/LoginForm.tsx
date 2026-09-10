@@ -22,8 +22,8 @@ export default function LoginForm({ next }: { next: string }) {
     <form action={formAction}>
       <input type="hidden" name="next" value={next} />
       <div className="field" style={{ marginBottom: 14 }}>
-        <label htmlFor="email">Email</label>
-        <input id="email" name="email" type="email" autoComplete="username" required />
+        <label htmlFor="nick">Usuario</label>
+        <input id="nick" name="nick" type="text" autoComplete="username" required />
       </div>
       <div className="field" style={{ marginBottom: 14 }}>
         <label htmlFor="password">Contraseña</label>
