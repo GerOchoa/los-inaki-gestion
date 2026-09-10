@@ -47,7 +47,9 @@ export default async function DashboardPage() {
 
   const rowsGastos = gastosToRows((gastos as GastoRow[]) || []);
   const rowsVentas = ventasToRows((ventas as VentaRow[]) || []);
-  const lastUpdated = new Date().toLocaleString("es-AR");
+  const lastUpdated = new Date().toLocaleString("es-AR", {
+  timeZone: "America/Argentina/Buenos_Aires",
+});
 
   return <DashboardWidget ventas={rowsVentas} gastos={rowsGastos} lastUpdated={lastUpdated} />;
 }
