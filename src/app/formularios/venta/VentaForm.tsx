@@ -8,6 +8,8 @@ import { FORMA_COBRO_OPTIONS, TIPO_COMPROBANTE_OPTIONS } from "@/lib/validation"
 const initialState: VentaFormState = {};
 
 function todayISO() {
+  // Fecha local del navegador (Argentina), no UTC: toISOString() corría el
+  // día para adelante entre las 21:00 y las 23:59 hora local.
   const d = new Date();
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, "0");
@@ -126,12 +128,11 @@ export default function VentaForm() {
         </div>
 
         <div className="form-grid" style={{ marginTop: 14 }}>
-          <div className="field">
+          <div className="field" hidden>
             <label htmlFor="forma_cobro">Forma de cobro</label>
-            <select id="forma_cobro" name="forma_cobro" defaultValue="" required>
-              <option value="" disabled>
-                Elegí una opción
-              </option>
+            {/* Oculto a pedido: se fija un valor por defecto válido para que
+                el registro se siga guardando correctamente sin mostrar el control. */}
+            <select id="forma_cobro" name="forma_cobro" defaultValue="efectivo">
               {FORMA_COBRO_OPTIONS.map(([v, l]) => (
                 <option key={v} value={v}>
                   {l}
@@ -141,24 +142,21 @@ export default function VentaForm() {
             <FieldError message={errors.forma_cobro} />
           </div>
 
-          <div className="field">
+          <div className="field" hidden>
             <label htmlFor="tiene_comprobante">Comprobante</label>
-            <select id="tiene_comprobante" name="tiene_comprobante" defaultValue="" required>
-              <option value="" disabled>
-                Elegí una opción
-              </option>
+            <select id="tiene_comprobante" name="tiene_comprobante" defaultValue="no">
               <option value="si">Sí</option>
               <option value="no">No</option>
             </select>
             <FieldError message={errors.tiene_comprobante} />
           </div>
 
-          <div className="field">
+          <div className="field" hidden>
             <label htmlFor="numero_comprobante">N° de comprobante</label>
             <input id="numero_comprobante" name="numero_comprobante" type="text" />
           </div>
 
-          <div className="field">
+          <div className="field" hidden>
             <label htmlFor="tipo_comprobante">Tipo de comprobante (opcional)</label>
             <select id="tipo_comprobante" name="tipo_comprobante" defaultValue="">
               <option value="">Sin especificar</option>
