@@ -52,7 +52,7 @@ export function canonUnit(s: unknown): string {
   return "OTROS";
 }
 
-function getMonto(r: DashRow): number {
+export function getMonto(r: DashRow): number {
   return Number(r.MONTO) || 0;
 }
 
@@ -245,7 +245,7 @@ function card(
   )}<div class="d">vs. mes anterior · ${detail || ""}</div></div>`;
 }
 
-function esc(s: string): string {
+export function esc(s: string): string {
   return s.replace(/[&<>"']/g, (c) =>
     ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c] as string)
   );
@@ -403,6 +403,86 @@ export interface PageData {
   subtitle: string;
   period: string;
   bodyHtml: string;
+}
+
+export type TableKind = "gastos" | "ventas";
+
+function rowsTableHtml(rows: DashRow[], kind: TableKind): string {
+  if (!rows.length) {
+    return '<div class="muted">Sin datos para el período.</div>';
+  }
+
+  const sorted = [...rows].sort((a, b) =>
+    (b["FECHA DE OPERACION"] || "").localeCompare(a["FECHA DE OPERACION"] || "")
+  );
+
+  const headers =
+    kind === "gastos"
+      ? ["Fecha", "Unidad", "Categoría", "Detalle", "Forma de pago", "Comprobante", "Monto"]
+      : ["Fecha", "Unidad", "Detalle", "Forma de cobro", "Comprobante", "Monto"];
+
+  const theadHtml = `<tr>${headers.map((h) => `<th>${esc(h)}</th>`).join("")}</tr>`;
+
+  const bodyRows = sorted
+    .map((r) => {
+      const cells =
+        kind === "gastos"
+          ? [
+              esc(r["FECHA DE OPERACION"] || ""),
+              esc(r["UNIDAD DE NEGOCIO"] || ""),
+              esc(r.CATEGORIA || ""),
+              esc(r["DETALLE - CONCEPTO"] || ""),
+              esc(r["FORMA DE COBRO O PAGO"] || ""),
+              esc(r["TIPO DE COMPROBANTE"] || ""),
+              `<span class="right">${money(getMonto(r))}</span>`,
+            ]
+          : [
+              esc(r["FECHA DE OPERACION"] || ""),
+              esc(r["UNIDAD DE NEGOCIO"] || ""),
+              esc(r["DETALLE - CONCEPTO"] || ""),
+              esc(r["FORMA DE COBRO O PAGO"] || ""),
+              esc(r["TIPO DE COMPROBANTE"] || ""),
+              `<span class="right">${money(getMonto(r))}</span>`,
+            ];
+      return `<tr>${cells.map((c) => `<td>${c}</td>`).join("")}</tr>`;
+    })
+    .join("");
+
+  const colsBeforeTotal = headers.length - 1;
+  const totalRow = `<tr><td colspan="${colsBeforeTotal}"><b>Total</b></td><td class="right"><b>${money(
+    sum(rows)
+  )}</b></td></tr>`;
+
+  return `<div class="table-wrap"><table class="tbl"><thead>${theadHtml}</thead><tbody>${bodyRows}${totalRow}</tbody></table></div>`;
+}
+
+// Vista de tabla cruda para el panel de admin: mismos filtros (año, mes,
+// día, unidad de negocio) que el tablero, pero sin cálculos ni gráficos —
+// el detalle de cada registro del período.
+export function computeTable(
+  ventas: DashRow[],
+  gastos: DashRow[],
+  f: Filters,
+  kind: TableKind
+): PageData {
+  const { cv, cg } = currentPrevious(ventas, gastos, f);
+  const rows = kind === "gastos" ? cg : cv;
+  const period = `${f.day === "ALL" ? "Mes completo" : "Día " + f.day} · ${MONTHS[f.m - 1]} ${f.y}`;
+  const title = kind === "gastos" ? "Tabla de gastos" : "Tabla de ventas";
+  const subtitle =
+    kind === "gastos"
+      ? "Detalle de gastos registrados en el período, con los mismos filtros del tablero."
+      : "Detalle de ventas registradas en el período, con los mismos filtros del tablero.";
+  const countLabel = kind === "gastos" ? "registros" : "operaciones";
+
+  const bodyHtml = `<div class="section"><div class="box"><h3>${esc(
+    title
+  )} — ${rows.length} ${countLabel} · Total ${money(sum(rows))}</h3>${rowsTableHtml(
+    rows,
+    kind
+  )}</div></div>`;
+
+  return { title, subtitle, period, bodyHtml };
 }
 
 export function computePage(ventas: DashRow[], gastos: DashRow[], f: Filters): PageData {
