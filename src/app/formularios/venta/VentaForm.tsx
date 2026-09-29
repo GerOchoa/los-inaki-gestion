@@ -77,10 +77,10 @@ export default function VentaForm() {
             <input
               id="monto_alojamiento"
               name="monto_alojamiento"
-              type="number"
-              step="0.01"
-              min="0"
-              defaultValue={0}
+              type="text"
+              inputMode="decimal"
+              autoComplete="off"
+              defaultValue="0"
             />
             <FieldError message={errors.monto_alojamiento} />
           </div>
@@ -89,10 +89,10 @@ export default function VentaForm() {
             <input
               id="monto_confiteria"
               name="monto_confiteria"
-              type="number"
-              step="0.01"
-              min="0"
-              defaultValue={0}
+              type="text"
+              inputMode="decimal"
+              autoComplete="off"
+              defaultValue="0"
             />
             <FieldError message={errors.monto_confiteria} />
           </div>
@@ -101,10 +101,10 @@ export default function VentaForm() {
             <input
               id="monto_eventos"
               name="monto_eventos"
-              type="number"
-              step="0.01"
-              min="0"
-              defaultValue={0}
+              type="text"
+              inputMode="decimal"
+              autoComplete="off"
+              defaultValue="0"
             />
             <FieldError message={errors.monto_eventos} />
           </div>
@@ -113,10 +113,10 @@ export default function VentaForm() {
             <input
               id="monto_otros"
               name="monto_otros"
-              type="number"
-              step="0.01"
-              min="0"
-              defaultValue={0}
+              type="text"
+              inputMode="decimal"
+              autoComplete="off"
+              defaultValue="0"
             />
             <FieldError message={errors.monto_otros} />
           </div>
