@@ -160,7 +160,7 @@ export default function GastoForm() {
             <FieldError message={errors.monto} />
           </div>
 
-          <div className="field" hidden>
+          <div className="field">
             <label htmlFor="tipo_comprobante">Tipo de comprobante (opcional)</label>
             <select id="tipo_comprobante" name="tipo_comprobante" defaultValue="">
               <option value="">Sin especificar</option>
