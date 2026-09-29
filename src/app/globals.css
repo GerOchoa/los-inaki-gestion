@@ -555,6 +555,18 @@ textarea {
   margin-bottom: 2px;
 }
 
+/* Oculta las flechas de incremento/decremento en los inputs numéricos
+   (montos de los formularios de gasto y venta) en todos los navegadores. */
+.field input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+.field input[type="number"]::-webkit-outer-spin-button,
+.field input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
 .field-error {
   color: var(--bad);
   font-size: 12px;
