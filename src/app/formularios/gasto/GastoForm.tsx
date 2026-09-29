@@ -14,6 +14,8 @@ import {
 const initialState: GastoFormState = {};
 
 function todayISO() {
+  // Fecha local del navegador (Argentina), no UTC: toISOString() corría el
+  // día para adelante entre las 21:00 y las 23:59 hora local.
   const d = new Date();
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, "0");
@@ -158,7 +160,7 @@ export default function GastoForm() {
             <FieldError message={errors.monto} />
           </div>
 
-          <div className="field">
+          <div className="field" hidden>
             <label htmlFor="tipo_comprobante">Tipo de comprobante (opcional)</label>
             <select id="tipo_comprobante" name="tipo_comprobante" defaultValue="">
               <option value="">Sin especificar</option>
@@ -171,7 +173,7 @@ export default function GastoForm() {
             <FieldError message={errors.tipo_comprobante} />
           </div>
 
-          <div className="field">
+          <div className="field" hidden>
             <label htmlFor="numero_comprobante">N° comprobante (opcional)</label>
             <input id="numero_comprobante" name="numero_comprobante" type="text" />
           </div>
