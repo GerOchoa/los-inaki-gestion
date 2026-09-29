@@ -66,7 +66,9 @@ export function money(n: number): string {
   return (Number(n) || 0).toLocaleString("es-AR", {
     style: "currency",
     currency: "ARS",
-    maximumFractionDigits: 0,
+    useGrouping: false,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
   });
 }
 
