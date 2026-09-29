@@ -122,7 +122,7 @@ export default function VentaForm() {
           </div>
         </div>
 
-        <div className="field" style={{ marginTop: 14 }}>
+        <div className="field" style={{ marginTop: 14 }} hidden>
           <label htmlFor="detalles">Detalles</label>
           <textarea id="detalles" name="detalles" rows={2} />
         </div>
