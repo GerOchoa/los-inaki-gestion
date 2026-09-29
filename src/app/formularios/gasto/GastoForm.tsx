@@ -153,10 +153,18 @@ export default function GastoForm() {
             </select>
             <FieldError message={errors.tipo_pago} />
           </div>
-
+          
           <div className="field">
             <label htmlFor="monto">Monto</label>
-            <input id="monto" name="monto" type="number" step="0.01" min="0.01" required />
+            <input
+              id="monto"
+              name="monto"
+              type="text"
+              inputMode="decimal"
+              autoComplete="off"
+              placeholder="0,00"
+              required
+            />
             <FieldError message={errors.monto} />
           </div>
 
