@@ -131,7 +131,11 @@ function optionalOption(
 
 function parseMonto(value: string): number | null {
   if (value === "" || value === null || value === undefined) return null;
-  const n = Number(value.toString().replace(",", "."));
+  // Los montos se tipean en formato es-AR (sin punto de miles, coma decimal):
+  // se quita cualquier punto y la coma se convierte en el separador decimal.
+  const normalized = value.toString().trim().replace(/\./g, "").replace(",", ".");
+  if (normalized === "") return null;
+  const n = Number(normalized);
   if (Number.isNaN(n)) return null;
   return n;
 }
