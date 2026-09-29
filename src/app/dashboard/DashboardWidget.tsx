@@ -2,17 +2,20 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { DashRow } from "@/lib/dashboard/transform";
 import Link from "next/link";
+import type { DashRow } from "@/lib/dashboard/transform";
 import {
   MONTHS,
   PAGE_CONFIG,
   allYears,
   latestYM,
   computePage,
+  computeTable,
   type PageKey,
   type Filters,
 } from "@/lib/dashboard/compute";
+
+type ViewMode = "dashboard" | "gastos" | "ventas";
 
 const TABS: { key: PageKey; label: string }[] = [
   { key: "global", label: "1. Global / GOP" },
@@ -40,13 +43,16 @@ export default function DashboardWidget({
   const [day, setDay] = useState("ALL");
   const [globalUnit, setGlobalUnit] = useState("ALL");
   const [refreshing, setRefreshing] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewMode>("dashboard");
 
   const unit = page === "global" ? globalUnit : "ALL";
 
   const data = useMemo(() => {
     const filters: Filters = { page, y: year, m: month, day, unit };
+    if (viewMode === "gastos") return computeTable(ventas, gastos, filters, "gastos");
+    if (viewMode === "ventas") return computeTable(ventas, gastos, filters, "ventas");
     return computePage(ventas, gastos, filters);
-  }, [ventas, gastos, page, year, month, day, unit]);
+  }, [ventas, gastos, page, year, month, day, unit, viewMode]);
 
   const yearOptions = years.length ? years : [initial.y];
   const cfg = PAGE_CONFIG[page];
@@ -64,6 +70,18 @@ export default function DashboardWidget({
             <Link className="btn light" href="/formularios/gasto">
               ← Cargar datos
             </Link>
+            <button
+              className={`btn ${viewMode === "gastos" ? "" : "light"}`}
+              onClick={() => setViewMode(viewMode === "gastos" ? "dashboard" : "gastos")}
+            >
+              Tabla de gastos
+            </button>
+            <button
+              className={`btn ${viewMode === "ventas" ? "" : "light"}`}
+              onClick={() => setViewMode(viewMode === "ventas" ? "dashboard" : "ventas")}
+            >
+              Tabla de ventas
+            </button>
           </div>
         </div>
       </div>
