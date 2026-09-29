@@ -14,7 +14,6 @@ export const CATEGORIA_GASTO_OPTIONS = [
   ["honorarios", "Honorarios"],
   ["comision", "Comisión"],
   ["caja_chica", "Caja chica"],
-  ["consumo_interno", "Consumo interno"],
   ["otros", "Otros"],
 ] as const;
 
@@ -31,6 +30,7 @@ export const FORMA_PAGO_OPTIONS = [
   ["transferencia", "Transferencia"],
   ["tarjeta", "Tarjeta"],
   ["cuenta_corriente", "Cuenta corriente"],
+  ["consumo_interno", "Consumo interno"],
 ] as const;
 
 export const TIPO_PAGO_OPTIONS = [
