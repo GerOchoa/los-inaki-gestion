@@ -14,6 +14,7 @@ export const CATEGORIA_GASTO_OPTIONS = [
   ["honorarios", "Honorarios"],
   ["comision", "Comisión"],
   ["caja_chica", "Caja chica"],
+  ["consumo_interno", "Consumo interno"],
   ["otros", "Otros"],
 ] as const;
 
