@@ -55,7 +55,7 @@ function MultiSelectCombo({
 
   function toggleValue(v: string) {
     if (allSelected) {
-      onChange(options.map((o) => o.value).filter((x) => x !== v));
+      onChange([v]);
       return;
     }
     if (selected.includes(v)) {
