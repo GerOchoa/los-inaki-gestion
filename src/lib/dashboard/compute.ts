@@ -304,6 +304,14 @@ function barHtml(data: [string, number][], expense = false): string {
     : '<div class="muted">Sin datos para el período.</div>';
 }
 
+function moneyShort(v: number): string {
+  const sign = v < 0 ? "-" : "";
+  const abs = Math.abs(v);
+  if (abs >= 1_000_000) return `${sign}$${(abs / 1_000_000).toFixed(1).replace(".", ",")}M`;
+  if (abs >= 1_000) return `${sign}$${(abs / 1_000).toFixed(1).replace(".", ",")}k`;
+  return `${sign}$${Math.round(abs)}`;
+}
+
 function paretoChartHtml(data: [string, number][]): string {
   if (!data.length) return "";
   const top = data.slice(0, 10);
@@ -313,7 +321,7 @@ function paretoChartHtml(data: [string, number][]): string {
     padL = 54,
     padR = 44,
     padT = 20,
-    padB = 50;
+    padB = 78;
   const max = Math.max(1, ...top.map((x) => x[1]));
   const n = top.length;
   const bw = (W - padL - padR) / n;
@@ -323,63 +331,45 @@ function paretoChartHtml(data: [string, number][]): string {
 
   let acc = 0;
   const bars: string[] = [];
-  const labels: string[] = [];
-  const points: { x: number; y: number }[] = [];
-  top.forEach(([k, v], i) => {
-    acc += v;
-    const cum = (acc / total) * 100;
-    const bh = (v / max) * (H - padT - padB);
-    bars.push(
-      `<rect x="${(padL + bw * i + bw * 0.15).toFixed(1)}" y="${yBar(v).toFixed(1)}" width="${(
-        bw * 0.7
-      ).toFixed(1)}" height="${bh.toFixed(1)}" fill="#b6672f" rx="3"/>`
-    );
-    points.push({ x: xC(i), y: yPct(cum) });
-    const short = k.length > 10 ? k.slice(0, 9) + "…" : k;
-    labels.push(
-      `<text x="${xC(i).toFixed(1)}" y="${H - padB + 16}" text-anchor="middle" font-size="9" fill="#7b8796">${esc(
-        short
-      )}</text>`
-    );
-  });
+  const cumLabels = points
+    .map(
+      (p) =>
+        `<text x="${p.x.toFixed(1)}" y="${(p.y - 12).toFixed(
+          1
+        )}" text-anchor="middle" font-size="10" font-weight="700" fill="#163d5d">${pct(p.cum)}</text>`
+    )
+    .join("");
 
-  const linePath = points.map((p, i) => `${i ? "L" : "M"} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(" ");
-  const dots = points.map((p) => `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="3" fill="#163d5d"/>`).join("");
+  const valueLabels = points
+    .map(
+      (p) =>
+        `<text x="${p.x.toFixed(1)}" y="${(p.y + 20).toFixed(
+          1
+        )}" text-anchor="middle" font-size="9" fill="#7b8796">${moneyShort(p.v)}</text>`
+    )
+    .join("");
+
+  const axisY = padT + innerH;
+  const catLabels = points
+    .map((p) => {
+      const short = p.k.length > 16 ? p.k.slice(0, 15) + "…" : p.k;
+      const ly = axisY + 10;
+      return `<text x="${p.x.toFixed(1)}" y="${ly.toFixed(
+        1
+      )}" text-anchor="end" font-size="9" font-weight="600" fill="#475569" transform="rotate(-38 ${p.x.toFixed(
+        1
+      )} ${ly.toFixed(1)})">${esc(short)}</text>`;
+    })
+    .join("");
+
   const y80 = yPct(80);
   const ref80 = `<line x1="${padL}" y1="${y80.toFixed(1)}" x2="${W - padR}" y2="${y80.toFixed(
     1
-  )}" stroke="#c4362f" stroke-dasharray="4 3" stroke-width="1"/><text x="${W - padR + 4}" y="${(
-    y80 + 3
-  ).toFixed(1)}" font-size="9" fill="#c4362f">80%</text>`;
+  )}" stroke="#c4362f" stroke-dasharray="4 3" stroke-width="1"/><text x="${(W - padR + 4).toFixed(
+    1
+  )}" y="${(y80 + 3).toFixed(1)}" font-size="9" fill="#c4362f">80%</text>`;
 
-  return `<div class="legend"><span><i class="dot" style="background:#b6672f"></i>Monto</span><span><i class="dot" style="background:#163d5d"></i>% acumulado</span></div><div class="chart"><svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">${bars.join(
-    ""
-  )}${ref80}<path d="${linePath}" fill="none" stroke="#163d5d" stroke-width="2.5"/>${dots}${labels.join(
-    ""
-  )}</svg></div>`;
-}
-
-function paretoHtml(data: [string, number][]): string {
-  if (!data.length) return '<div class="muted">Sin datos para el período.</div>';
-  const total = data.reduce((a, [, v]) => a + v, 0) || 1;
-  const max = Math.max(1, ...data.map((x) => x[1]));
-  let acc = 0;
-  const rows = data
-    .slice(0, 10)
-    .map(([k, v]) => {
-      acc += v;
-      const cum = (acc / total) * 100;
-      return `<div class="bar-row"><div class="bar-label" title="${esc(k)}">${esc(
-        k
-      )}</div><div class="bar-bg"><div class="bar exp" style="width:${Math.max(
-        2,
-        (v / max) * 100
-      )}%"></div></div><div class="bar-val">${money(v)} <span class="small muted">(${pct(
-        cum
-      )} acum.)</span></div></div>`;
-    })
-    .join("");
-  return rows;
+  return `<div class="legend"><span><i class="dot" style="background:#163d5d"></i>% acumulado</span><span class="small muted">Tamaño del punto = monto</span></div><div class="chart"><svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none"><defs><linearGradient id="paretoFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#163d5d" stop-opacity="0.18"/><stop offset="100%" stop-color="#163d5d" stop-opacity="0"/></linearGradient></defs>${grid}${ref80}<path d="${areaPath}" fill="url(#paretoFill)" stroke="none"/><path d="${linePath}" fill="none" stroke="#163d5d" stroke-width="2.5"/>${bubbles}${cumLabels}${valueLabels}${catLabels}</svg></div>`;
 }
 
 // --- Tabla "Detalle por período": una fila por cada período presente en
@@ -765,7 +755,7 @@ export function computePage(
     true
   )}</div></div><div class="section"><div class="box"><h3>Gastos operativos por categoría</h3>${paretoChartHtml(
     expDrivers
-  )}${paretoHtml(expDrivers)}</div></div><div class="cols section"><div class="box"><h3>Formas de pago (gastos)</h3>${barHtml(
+    )}</div></div><div class="cols section"><div class="box"><h3>Formas de pago (gastos)</h3>${barHtml(
     formasPagoGastos,
     true
   )}</div><div class="box"><h3>Gastos compartidos y no operativos</h3>${barHtml(
