@@ -312,81 +312,92 @@ function moneyShort(v: number): string {
   return `${sign}$${Math.round(abs)}`;
 }
 
+
 function paretoChartHtml(data: [string, number][]): string {
   if (!data.length) return "";
   const top = data.slice(0, 10);
   const total = data.reduce((a, [, v]) => a + v, 0) || 1;
   const W = 720,
-    H = 280,
-    padL = 50,
-    padR = 20,
-    padT = 34,
-    padB = 78;
+    H = 270,
+    padL = 44,
+    padR = 34,
+    padT = 16,
+    padB = 62;
   const innerW = W - padL - padR;
   const innerH = H - padT - padB;
   const n = top.length;
   const maxV = Math.max(1, ...top.map((x) => x[1]));
-  const x = (i: number) => (n === 1 ? padL + innerW / 2 : padL + (i * innerW) / (n - 1));
+  const bw = innerW / n;
+  const xC = (i: number) => padL + bw * i + bw / 2;
+  const yBar = (v: number) => padT + (1 - v / maxV) * innerH;
   const yPct = (p: number) => padT + (1 - p / 100) * innerH;
+  const axisY = padT + innerH;
 
   let acc = 0;
   const points = top.map(([k, v], i) => {
     acc += v;
     const cum = (acc / total) * 100;
-    return { x: x(i), y: yPct(cum), cum, v, k };
+    return { x: xC(i), y: yPct(cum), cum, v, k };
   });
 
+  // Grid + eje izquierdo (monto) y derecho (% acumulado)
   let grid = "";
-  [0, 20, 40, 60, 80, 100].forEach((p) => {
-    const yy = yPct(p);
+  for (let i = 0; i <= 4; i++) {
+    const val = (maxV * i) / 4;
+    const yy = yBar(val);
     grid += `<line x1="${padL}" y1="${yy.toFixed(1)}" x2="${W - padR}" y2="${yy.toFixed(
       1
-    )}" stroke="#e7ebf0"/><text x="${(padL - 8).toFixed(1)}" y="${(yy + 3).toFixed(
+    )}" stroke="#eef1f5"/><text x="${(padL - 6).toFixed(1)}" y="${(yy + 3).toFixed(
       1
-    )}" text-anchor="end" font-size="10" fill="#7b8796">${p}%</text>`;
+    )}" text-anchor="end" font-size="8" fill="#9aa5b3">${moneyShort(val)}</text>`;
+  }
+  let pctAxis = "";
+  [0, 20, 40, 60, 80, 100].forEach((p) => {
+    const yy = yPct(p);
+    pctAxis += `<text x="${(W - padR + 6).toFixed(1)}" y="${(yy + 3).toFixed(
+      1
+    )}" font-size="8" fill="#9aa5b3">${p}%</text>`;
   });
 
-  const linePath = points.map((p, i) => `${i ? "L" : "M"} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(" ");
-  const base = (padT + innerH).toFixed(1);
-  const areaPath = `${linePath} L ${points[points.length - 1].x.toFixed(1)} ${base} L ${points[0].x.toFixed(
-    1
-  )} ${base} Z`;
-
-  const bubbles = points
-    .map((p) => {
-      const r = 4 + (p.v / maxV) * 11;
-      return `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${r.toFixed(
-        1
-      )}" fill="#163d5d" fill-opacity="0.85" stroke="#fff" stroke-width="1.5"/>`;
+  const bars = top
+    .map(([, v], i) => {
+      const bh = innerH - (yBar(v) - padT);
+      return `<rect x="${(padL + bw * i + bw * 0.2).toFixed(1)}" y="${yBar(v).toFixed(1)}" width="${(
+        bw * 0.6
+      ).toFixed(1)}" height="${Math.max(0, bh).toFixed(1)}" fill="#b6672f" rx="2"/>`;
     })
+    .join("");
+
+  const linePath = points.map((p, i) => `${i ? "L" : "M"} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(" ");
+  const dots = points
+    .map((p) => `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="2.5" fill="#163d5d"/>`)
     .join("");
 
   const cumLabels = points
     .map(
       (p) =>
-        `<text x="${p.x.toFixed(1)}" y="${(p.y - 12).toFixed(
+        `<text x="${p.x.toFixed(1)}" y="${(p.y - 7).toFixed(
           1
-        )}" text-anchor="middle" font-size="10" font-weight="700" fill="#163d5d">${pct(p.cum)}</text>`
+        )}" text-anchor="middle" font-size="8" font-weight="700" fill="#163d5d">${pct(p.cum)}</text>`
     )
     .join("");
 
-  const valueLabels = points
-    .map(
-      (p) =>
-        `<text x="${p.x.toFixed(1)}" y="${(p.y + 20).toFixed(
-          1
-        )}" text-anchor="middle" font-size="9" fill="#7b8796">${moneyShort(p.v)}</text>`
-    )
+  const valueLabels = top
+    .map(([, v], i) => {
+      const yy = yBar(v) - 5;
+      return `<text x="${xC(i).toFixed(1)}" y="${yy.toFixed(
+        1
+      )}" text-anchor="middle" font-size="7.5" fill="#7b8796">${moneyShort(v)}</text>`;
+    })
     .join("");
 
-  const axisY = padT + innerH;
   const catLabels = points
     .map((p) => {
-      const short = p.k.length > 16 ? p.k.slice(0, 15) + "…" : p.k;
-      const ly = axisY + 10;
+      const short = p.k.length > 14 ? p.k.slice(0, 13) + "…" : p.k;
+      const ly = axisY + 9;
       return `<text x="${p.x.toFixed(1)}" y="${ly.toFixed(
         1
-      )}" text-anchor="end" font-size="9" font-weight="600" fill="#475569" transform="rotate(-38 ${p.x.toFixed(
+      )}" text-anchor="end" font-size="7.5" font-weight="600" fill="#475569" transform="rotate(-35 ${p.x.toFixed(
         1
       )} ${ly.toFixed(1)})">${esc(short)}</text>`;
     })
@@ -395,12 +406,11 @@ function paretoChartHtml(data: [string, number][]): string {
   const y80 = yPct(80);
   const ref80 = `<line x1="${padL}" y1="${y80.toFixed(1)}" x2="${W - padR}" y2="${y80.toFixed(
     1
-  )}" stroke="#c4362f" stroke-dasharray="4 3" stroke-width="1"/><text x="${(W - padR + 4).toFixed(
-    1
-  )}" y="${(y80 + 3).toFixed(1)}" font-size="9" fill="#c4362f">80%</text>`;
+  )}" stroke="#c4362f" stroke-dasharray="4 3" stroke-width="1"/>`;
 
-  return `<div class="legend"><span><i class="dot" style="background:#163d5d"></i>% acumulado</span><span class="small muted">Tamaño del punto = monto</span></div><div class="chart"><svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none"><defs><linearGradient id="paretoFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#163d5d" stop-opacity="0.18"/><stop offset="100%" stop-color="#163d5d" stop-opacity="0"/></linearGradient></defs>${grid}${ref80}<path d="${areaPath}" fill="url(#paretoFill)" stroke="none"/><path d="${linePath}" fill="none" stroke="#163d5d" stroke-width="2.5"/>${bubbles}${cumLabels}${valueLabels}${catLabels}</svg></div>`;
+  return `<div class="legend"><span><i class="dot" style="background:#b6672f"></i>Monto</span><span><i class="dot" style="background:#163d5d"></i>% acumulado</span></div><div class="chart"><svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">${grid}${pctAxis}${ref80}${bars}<path d="${linePath}" fill="none" stroke="#163d5d" stroke-width="2"/>${dots}${cumLabels}${valueLabels}${catLabels}</svg></div>`;
 }
+
 // --- Tabla "Detalle por período": una fila por cada período presente en
 // la selección actual (agrupa por día si hay un único mes+año con días
 // específicos elegidos; si no, agrupa por mes). Responde a la selección
