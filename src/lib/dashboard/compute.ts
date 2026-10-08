@@ -397,7 +397,7 @@ function paretoChartHtml(data: [string, number][]): string {
       const ly = axisY + 9;
       return `<text x="${p.x.toFixed(1)}" y="${ly.toFixed(
         1
-      )}" text-anchor="end" font-size="7.5" font-weight="600" fill="#475569" transform="rotate(-35 ${p.x.toFixed(
+      )}" text-anchor="end" font-size="6" font-weight="600" fill="#475569" transform="rotate(-35 ${p.x.toFixed(
         1
       )} ${ly.toFixed(1)})">${esc(short)}</text>`;
     })
