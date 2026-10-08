@@ -10,7 +10,7 @@ export const MONTHS = [
   "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
 ];
 
-export type PageKey = "global" | "alojamiento" | "confiteria" | "otros";
+export type PageKey = "global" | "alojamiento" | "cafeteria" | "otros";
 
 export const PAGE_CONFIG: Record<
   PageKey,
@@ -27,11 +27,11 @@ export const PAGE_CONFIG: Record<
       "Resultado operativo del negocio de alojamiento. Ocupación, ADR y RevPAR se incorporarán cuando exista módulo de reservas.",
     scope: ["ALOJAMIENTO"],
   },
-  confiteria: {
-    title: "Confitería",
+  cafeteria: {
+    title: "Cafetería",
     subtitle:
-      "Resultado operativo de gastronomía/confitería: ingresos, costos, GOP y drivers principales.",
-    scope: ["CONFITERIA"],
+      "Resultado operativo de gastronomía/cafetería: ingresos, costos, GOP y drivers principales.",
+    scope: ["CAFETERIA"],
   },
   otros: {
     title: "Otros ingresos / Gestión",
@@ -47,7 +47,7 @@ export function norm(s: unknown): string {
 export function canonUnit(s: unknown): string {
   const n = norm(s);
   if (n.includes("ALOJ")) return "ALOJAMIENTO";
-  if (n.includes("CONFIT")) return "CONFITERIA";
+  if (n.includes("CONFIT") || n.includes("CAFET")) return "CAFETERIA";
   if (n.includes("EVENT")) return "EVENTOS";
   return "OTROS";
 }
@@ -62,11 +62,12 @@ function dateObj(r: DashRow): Date | null {
   return new Date(f.slice(0, 10) + "T12:00:00");
 }
 
+// Formato moneda es-AR con separador de miles/millones (punto) y coma
+// decimal — es el formato por defecto de Intl para "ARS".
 export function money(n: number): string {
   return (Number(n) || 0).toLocaleString("es-AR", {
     style: "currency",
     currency: "ARS",
-    useGrouping: false,
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
@@ -135,11 +136,21 @@ export function latestYM(ventas: DashRow[], gastos: DashRow[]) {
   return { y: d.getFullYear(), m: d.getMonth() + 1 };
 }
 
+function earliestYM(ventas: DashRow[], gastos: DashRow[]) {
+  const ds = [...ventas, ...gastos]
+    .map(dateObj)
+    .filter((d): d is Date => !!d)
+    .sort((a, b) => a.getTime() - b.getTime());
+  const d = ds[0] || new Date();
+  return { y: d.getFullYear(), m: d.getMonth() + 1 };
+}
+
+// Filtros de fecha admiten selección múltiple: arrays vacíos = "todos".
 export interface Filters {
   page: PageKey;
-  y: number;
-  m: number;
-  day: string; // "ALL" o número de día como string
+  years: number[];
+  months: number[];
+  days: number[];
   unit: string; // sólo aplica en la página "global"; "ALL" o unidad canónica
 }
 
@@ -152,24 +163,39 @@ function scopeAllows(r: DashRow, f: Filters): boolean {
   return (cfg.scope || []).includes(u);
 }
 
-function periodData(arr: DashRow[], y: number, m: number, day: string, f: Filters): DashRow[] {
-  return arr.filter((r) => {
-    const d = dateObj(r);
-    if (!d) return false;
-    if (d.getFullYear() !== y || d.getMonth() + 1 !== m) return false;
-    if (day !== "ALL" && d.getDate() !== Number(day)) return false;
-    return scopeAllows(r, f);
-  });
+function periodMatch(r: DashRow, f: Filters): boolean {
+  const d = dateObj(r);
+  if (!d) return false;
+  if (f.years.length && !f.years.includes(d.getFullYear())) return false;
+  if (f.months.length && !f.months.includes(d.getMonth() + 1)) return false;
+  if (f.days.length && !f.days.includes(d.getDate())) return false;
+  return scopeAllows(r, f);
 }
 
-function currentPrevious(ventas: DashRow[], gastos: DashRow[], f: Filters) {
-  const prev = ymDate(f.y, f.m, -1);
-  return {
-    cv: periodData(ventas, f.y, f.m, f.day, f),
-    cg: periodData(gastos, f.y, f.m, f.day, f),
-    pv: periodData(ventas, prev.y, prev.m, f.day, f),
-    pg: periodData(gastos, prev.y, prev.m, f.day, f),
-  };
+function filterPeriod(arr: DashRow[], f: Filters): DashRow[] {
+  return arr.filter((r) => periodMatch(r, f));
+}
+
+// La comparación "vs. mes anterior" sólo tiene sentido con un único mes
+// seleccionado; con selección múltiple se muestra el período combinado
+// sin comparativo.
+function isComparable(f: Filters): boolean {
+  return f.years.length === 1 && f.months.length === 1;
+}
+
+function currentAndPrevious(ventas: DashRow[], gastos: DashRow[], f: Filters) {
+  const cv = filterPeriod(ventas, f);
+  const cg = filterPeriod(gastos, f);
+  const comparable = isComparable(f);
+  let pv: DashRow[] = [];
+  let pg: DashRow[] = [];
+  if (comparable) {
+    const prev = ymDate(f.years[0], f.months[0], -1);
+    const pf: Filters = { ...f, years: [prev.y], months: [prev.m] };
+    pv = filterPeriod(ventas, pf);
+    pg = filterPeriod(gastos, pf);
+  }
+  return { cv, cg, pv, pg, comparable };
 }
 
 export interface Metrics {
@@ -238,13 +264,20 @@ function card(
   cur: number,
   prev: number,
   higherBetter: boolean,
-  detail: string
+  detail: string,
+  comparable: boolean
 ): string {
-  return `<div class="kpi"><div class="t">${title}</div><div class="v">${value}</div>${compHtml(
-    cur,
-    prev,
-    higherBetter
-  )}<div class="d">vs. mes anterior · ${detail || ""}</div></div>`;
+  const compare = comparable
+    ? compHtml(cur, prev, higherBetter)
+    : '<span class="compare flat">• período combinado</span>';
+  const detailText = comparable ? `vs. mes anterior · ${detail || ""}` : detail || "";
+  return `<div class="kpi"><div class="t">${title}</div><div class="v">${value}</div>${compare}<div class="d">${detailText}</div></div>`;
+}
+
+function statTile(title: string, value: string, detail?: string): string {
+  return `<div class="kpi"><div class="t">${title}</div><div class="v">${value}</div>${
+    detail ? `<div class="d">${detail}</div>` : ""
+  }</div>`;
 }
 
 export function esc(s: string): string {
@@ -271,21 +304,166 @@ function barHtml(data: [string, number][], expense = false): string {
     : '<div class="muted">Sin datos para el período.</div>';
 }
 
-function monthSeries(ventas: DashRow[], gastos: DashRow[], f: Filters) {
-  const out: { label: string; income: number; expense: number; gop: number }[] = [];
-  for (let i = -5; i <= 0; i++) {
-    const t = ymDate(f.y, f.m, i);
-    const v = periodData(ventas, t.y, t.m, "ALL", f);
-    const g = periodData(gastos, t.y, t.m, "ALL", f);
+function paretoHtml(data: [string, number][]): string {
+  if (!data.length) return '<div class="muted">Sin datos para el período.</div>';
+  const total = data.reduce((a, [, v]) => a + v, 0) || 1;
+  const max = Math.max(1, ...data.map((x) => x[1]));
+  let acc = 0;
+  const rows = data
+    .slice(0, 10)
+    .map(([k, v]) => {
+      acc += v;
+      const cum = (acc / total) * 100;
+      return `<div class="bar-row"><div class="bar-label" title="${esc(k)}">${esc(
+        k
+      )}</div><div class="bar-bg"><div class="bar exp" style="width:${Math.max(
+        2,
+        (v / max) * 100
+      )}%"></div></div><div class="bar-val">${money(v)} <span class="small muted">(${pct(
+        cum
+      )} acum.)</span></div></div>`;
+    })
+    .join("");
+  return rows;
+}
+
+// --- Tabla "Detalle por período": una fila por cada período presente en
+// la selección actual (agrupa por día si hay un único mes+año con días
+// específicos elegidos; si no, agrupa por mes). Responde a la selección
+// múltiple de año/mes/día.
+function periodKey(d: Date, byDay: boolean): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  if (!byDay) return `${y}-${m}`;
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function periodLabel(key: string, byDay: boolean): string {
+  const parts = key.split("-").map(Number);
+  if (byDay) return `${String(parts[2]).padStart(2, "0")}/${String(parts[1]).padStart(2, "0")}/${parts[0]}`;
+  return `${MONTHS[parts[1] - 1]} ${parts[0]}`;
+}
+
+function periodBreakdownHtml(cv: DashRow[], cg: DashRow[], f: Filters): string {
+  const byDay = f.years.length === 1 && f.months.length === 1 && f.days.length > 0;
+  const keys = new Set<string>();
+  cv.forEach((r) => {
+    const d = dateObj(r);
+    if (d) keys.add(periodKey(d, byDay));
+  });
+  cg.forEach((r) => {
+    const d = dateObj(r);
+    if (d) keys.add(periodKey(d, byDay));
+  });
+  const sortedKeys = [...keys].sort();
+  if (!sortedKeys.length) return '<div class="muted">Sin datos para el período.</div>';
+
+  const rows = sortedKeys
+    .map((k) => {
+      const v = cv.filter((r) => {
+        const d = dateObj(r);
+        return d && periodKey(d, byDay) === k;
+      });
+      const g = cg.filter((r) => {
+        const d = dateObj(r);
+        return d && periodKey(d, byDay) === k;
+      });
+      const mm = metrics(v, g);
+      return `<tr><td>${esc(periodLabel(k, byDay))}</td><td class="right">${money(
+        mm.ingresos
+      )}</td><td class="right">${money(mm.gastosOp)}</td><td class="right">${money(
+        mm.gop
+      )}</td><td class="right">${pct(mm.margen)}</td><td class="right">${mm.ops}</td></tr>`;
+    })
+    .join("");
+
+  return `<div class="table-wrap"><table class="tbl"><thead><tr><th>Período</th><th class="right">Ingresos</th><th class="right">Gastos operativos</th><th class="right">GOP</th><th class="right">Margen</th><th class="right">Operaciones</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+}
+
+// --- Evolución (gráfico de líneas + tabla acompañante): eje de tiempo fijo
+// desde agosto 2026 en adelante (independiente de los filtros de período),
+// sólo acota por unidad de negocio. "Ampliar" extiende el inicio hasta el
+// mes más antiguo con datos.
+const EVOLUTION_START = { y: 2026, m: 8 };
+
+function unitAllows(r: DashRow, unit: string): boolean {
+  return unit === "ALL" || canonUnit(r["UNIDAD DE NEGOCIO"]) === unit;
+}
+
+function monthRange(fromY: number, fromM: number, toY: number, toM: number) {
+  const out: { y: number; m: number }[] = [];
+  let y = fromY;
+  let m = fromM;
+  let guard = 0;
+  while ((y < toY || (y === toY && m <= toM)) && guard < 600) {
+    out.push({ y, m });
+    m += 1;
+    if (m > 12) {
+      m = 1;
+      y += 1;
+    }
+    guard += 1;
+  }
+  return out;
+}
+
+interface EvolutionPoint {
+  label: string;
+  income: number;
+  expense: number;
+  gop: number;
+  margen: number;
+}
+
+function evolutionSeries(
+  ventas: DashRow[],
+  gastos: DashRow[],
+  unit: string,
+  expanded: boolean
+): { series: EvolutionPoint[]; canExpand: boolean } {
+  const latest = latestYM(ventas, gastos);
+  const earliest = earliestYM(ventas, gastos);
+  const earlierThanFixedStart =
+    earliest.y < EVOLUTION_START.y || (earliest.y === EVOLUTION_START.y && earliest.m < EVOLUTION_START.m);
+  const start = expanded && earlierThanFixedStart ? earliest : EVOLUTION_START;
+  const end =
+    latest.y > start.y || (latest.y === start.y && latest.m >= start.m) ? latest : start;
+
+  const months = monthRange(start.y, start.m, end.y, end.m);
+  const series = months.map(({ y, m }) => {
+    const v = ventas.filter((r) => {
+      const d = dateObj(r);
+      return d && d.getFullYear() === y && d.getMonth() + 1 === m && unitAllows(r, unit);
+    });
+    const g = gastos.filter((r) => {
+      const d = dateObj(r);
+      return d && d.getFullYear() === y && d.getMonth() + 1 === m && unitAllows(r, unit);
+    });
     const mm = metrics(v, g);
-    out.push({
-      label: `${MONTHS[t.m - 1].slice(0, 3)} ${String(t.y).slice(-2)}`,
+    return {
+      label: `${MONTHS[m - 1].slice(0, 3)} ${String(y).slice(-2)}`,
       income: mm.ingresos,
       expense: mm.gastosOp,
       gop: mm.gop,
-    });
-  }
-  return out;
+      margen: mm.margen,
+    };
+  });
+
+  return { series, canExpand: earlierThanFixedStart };
+}
+
+function evolutionTableHtml(series: EvolutionPoint[]): string {
+  if (!series.length) return '<div class="muted">Sin datos para el período.</div>';
+  const rows = series
+    .map(
+      (s) =>
+        `<tr><td>${esc(s.label)}</td><td class="right">${money(s.income)}</td><td class="right">${money(
+          s.expense
+        )}</td><td class="right">${money(s.gop)}</td><td class="right">${pct(s.margen)}</td></tr>`
+    )
+    .join("");
+  return `<div class="table-wrap"><table class="tbl"><thead><tr><th>Mes</th><th class="right">Ingresos</th><th class="right">Gastos operativos</th><th class="right">GOP</th><th class="right">Margen</th></tr></thead><tbody>${rows}</tbody></table></div>`;
 }
 
 function lineChart(series: { label: string; income: number; expense: number; gop: number }[]): string {
@@ -322,7 +500,26 @@ function lineChart(series: { label: string; income: number; expense: number; gop
     .join("")}</svg></div>`;
 }
 
-function insightSet(cm: Metrics, pm: Metrics) {
+function insightSet(cm: Metrics, pm: Metrics, comparable: boolean) {
+  if (!comparable) {
+    return [
+      {
+        c: cm.gop >= 0 ? "good" : "bad",
+        t: "Resultado operativo",
+        d: `El GOP del período seleccionado es ${money(cm.gop)} (${pct(cm.margen)} sobre ingresos).`,
+      },
+      {
+        c: "good",
+        t: "Ingresos del período",
+        d: `Los ingresos del período seleccionado suman ${money(cm.ingresos)} en ${cm.ops} operaciones.`,
+      },
+      {
+        c: "warn",
+        t: "Gastos operativos del período",
+        d: `Los gastos operativos del período seleccionado suman ${money(cm.gastosOp)}.`,
+      },
+    ];
+  }
   const gopCh = change(cm.gop, pm.gop);
   const incCh = change(cm.ingresos, pm.ingresos);
   const expCh = change(cm.gastosOp, pm.gastosOp);
@@ -351,18 +548,25 @@ function insightSet(cm: Metrics, pm: Metrics) {
   ];
 }
 
-function strategicQuestions(page: PageKey, cv: DashRow[], cg: DashRow[], cm: Metrics, pm: Metrics) {
-  const incCh = change(cm.ingresos, pm.ingresos);
-  const expCh = change(cm.gastosOp, pm.gastosOp);
-  const gopCh = change(cm.gop, pm.gop);
+function strategicQuestions(
+  cv: DashRow[],
+  cg: DashRow[],
+  cm: Metrics,
+  pm: Metrics,
+  comparable: boolean
+) {
   const topIncome = groupSum(cv, (r) => norm(r["DETALLE - CONCEPTO"]))[0];
   const topExpense = groupSum(cg.filter(isOpExpense), (r) => norm(r.CATEGORIA) || norm(r["DETALLE - CONCEPTO"]))[0];
 
-  const q1 = `En el período se registraron ingresos por ${money(cm.ingresos)}, gastos operativos por ${money(
-    cm.gastosOp
-  )} y un GOP de ${money(cm.gop)}. Frente al mes anterior, el GOP ${
-    gopCh.v >= 0 ? "mejoró" : "empeoró"
-  } ${Math.abs(gopCh.v).toFixed(1)}%.`;
+  const q1 = comparable
+    ? `En el período se registraron ingresos por ${money(cm.ingresos)}, gastos operativos por ${money(
+        cm.gastosOp
+      )} y un GOP de ${money(cm.gop)}. Frente al mes anterior, el GOP ${
+        change(cm.gop, pm.gop).v >= 0 ? "mejoró" : "empeoró"
+      } ${Math.abs(change(cm.gop, pm.gop).v).toFixed(1)}%.`
+    : `En el período seleccionado se registraron ingresos por ${money(cm.ingresos)}, gastos operativos por ${money(
+        cm.gastosOp
+      )} y un GOP de ${money(cm.gop)}.`;
 
   const drivers: string[] = [];
   if (topIncome) drivers.push(`principal concepto de ingreso: ${topIncome[0]} (${money(topIncome[1])})`);
@@ -375,22 +579,24 @@ function strategicQuestions(page: PageKey, cv: DashRow[], cg: DashRow[], cm: Met
   if (cm.margen < 0) risk.push("el margen operativo es negativo");
   else if (cm.margen < 15) risk.push("el margen operativo es bajo");
   if (cm.noReceipt > 0) risk.push(`hay ${cm.noReceipt} gastos sin comprobante`);
-  if (expCh.v > incCh.v && cm.gastosOp > 0) risk.push("los gastos están creciendo más rápido que los ingresos");
+  if (comparable) {
+    const incCh = change(cm.ingresos, pm.ingresos);
+    const expCh = change(cm.gastosOp, pm.gastosOp);
+    if (expCh.v > incCh.v && cm.gastosOp > 0) risk.push("los gastos están creciendo más rápido que los ingresos");
+  }
   const q3 = risk.length
     ? `El principal riesgo/oportunidad es que ${risk.join("; ")}.`
     : "No aparece un desvío crítico en los datos actuales; el foco debe ponerse en sostener margen y calidad de carga.";
 
   const rec: string[] = [];
   if (cm.noReceipt > 0) rec.push("reducir gastos sin comprobante");
-  if (expCh.v > 0) rec.push("revisar las categorías que más explican el aumento de gastos");
-  if (incCh.v < 0) rec.push("definir una acción comercial para recuperar ingresos");
+  if (comparable && change(cm.gastosOp, pm.gastosOp).v > 0)
+    rec.push("revisar las categorías que más explican el aumento de gastos");
+  if (comparable && change(cm.ingresos, pm.ingresos).v < 0)
+    rec.push("definir una acción comercial para recuperar ingresos");
   if (cm.margen < 20) rec.push("trabajar precio, mix y costos para elevar el margen");
-  if (page === "alojamiento")
-    rec.push("incorporar reservas, noches, check-in/check-out y unidad/cabaña para medir ocupación, ADR y RevPAR");
-  if (page === "confiteria")
-    rec.push("incorporar cantidad de tickets/productos o cierre diario para analizar ticket y margen con mayor precisión");
   if (!rec.length) rec.push("mantener el control semanal y fijar una meta concreta de crecimiento de GOP para el próximo mes");
-  const q4 = `Para el próximo mes: ${rec.slice(0, 3).join("; ")}.`;
+  const q4 = `Para el próximo período: ${rec.slice(0, 3).join("; ")}.`;
 
   return [
     { n: "Pregunta 1", h: "¿Qué pasó?", p: q1, improve: false },
@@ -404,10 +610,138 @@ export interface PageData {
   title: string;
   subtitle: string;
   period: string;
-  bodyHtml: string;
+  cardsHtml: string;
+  insightsHtml: string;
+  periodTableHtml: string;
+  evolutionTableHtml: string;
+  evolutionChartHtml: string;
+  canExpandEvolution: boolean;
+  restHtml: string;
 }
 
+function periodLabelFromFilters(f: Filters): string {
+  const yPart = f.years.length ? f.years.join(", ") : "Todos los años";
+  const mPart = f.months.length ? f.months.map((m) => MONTHS[m - 1]).join(", ") : "Todos los meses";
+  const dPart = f.days.length ? `Días ${f.days.join(", ")}` : "Todos los días";
+  return `${dPart} · ${mPart} · ${yPart}`;
+}
+
+export function computePage(
+  ventas: DashRow[],
+  gastos: DashRow[],
+  f: Filters,
+  expandedChart = false
+): PageData {
+  const { cv, cg, pv, pg, comparable } = currentAndPrevious(ventas, gastos, f);
+  const cm = metrics(cv, cg);
+  const pm = metrics(pv, pg);
+  const cfg = PAGE_CONFIG[f.page];
+  const period = periodLabelFromFilters(f);
+
+  const cardsHtml = `<div class="grid">${[
+    card("Ingresos", money(cm.ingresos), cm.ingresos, pm.ingresos, true, `${cv.length} operaciones`, comparable),
+    card(
+      "Gastos operativos",
+      money(cm.gastosOp),
+      cm.gastosOp,
+      pm.gastosOp,
+      false,
+      `${cg.filter(isOpExpense).length} registros`,
+      comparable
+    ),
+    card("GOP", money(cm.gop), cm.gop, pm.gop, true, "Ingresos − gastos operativos", comparable),
+    card("Margen GOP", pct(cm.margen), cm.margen, pm.margen, true, "GOP / ingresos", comparable),
+    card("Ticket promedio", money(cm.ticket), cm.ticket, pm.ticket, true, "Promedio por registro de venta", comparable),
+    card(
+      "Gastos documentados",
+      pct(cm.documented),
+      cm.documented,
+      pm.documented,
+      true,
+      `${cm.noReceipt} sin comprobante`,
+      comparable
+    ),
+  ].join("")}</div>`;
+
+  const insightsHtml = `<div class="section"><h3>Principales insights</h3><div class="insights">${insightSet(
+    cm,
+    pm,
+    comparable
+  )
+    .map((x) => `<div class="insight ${x.c}"><b>${x.t}</b><span>${x.d}</span></div>`)
+    .join("")}</div></div>`;
+
+  const periodTableHtml = periodBreakdownHtml(cv, cg, f);
+
+  const { series, canExpand } = evolutionSeries(ventas, gastos, f.unit, expandedChart);
+  const evoTableHtml = evolutionTableHtml(series);
+  const evoChartHtml = lineChart(series);
+
+  const salesDrivers = groupSum(cv, (r) => norm(r["DETALLE - CONCEPTO"]));
+  const ventasInsightTiles = [
+    statTile("Ingresos totales", money(cm.ingresos), `${cv.length} operaciones`),
+    statTile("Ticket promedio", money(cm.ticket), "Promedio por registro de venta"),
+    statTile("Operaciones", String(cv.length), "Registros de venta en el período"),
+  ].join("");
+
+  const gastosPorUnidad = groupSum(cg.filter(isOpExpense), (r) => canonUnit(r["UNIDAD DE NEGOCIO"]));
+  const gastosPorTipoPago = groupSum(cg, (r) => norm(r.TIPO));
+  const expDrivers = groupSum(cg.filter(isOpExpense), (r) => norm(r.CATEGORIA) || norm(r["DETALLE - CONCEPTO"]));
+  const formasPagoGastos = groupSum(cg.filter(isOpExpense), (r) => norm(r["FORMA DE COBRO O PAGO"]));
+  const compartidosNoOp = groupSum(
+    cg.filter((r) => ["COMPARTIDO", "NO OPERATIVO"].includes(norm(r["UNIDAD DE NEGOCIO"]))),
+    (r) => norm(r["UNIDAD DE NEGOCIO"])
+  );
+
+  const qs = strategicQuestions(cv, cg, cm, pm, comparable)
+    .map(
+      (q) =>
+        `<div class="question ${q.improve ? "improve" : ""}"><div class="n">${q.n}</div><h4>${q.h}</h4><p>${q.p}</p></div>`
+    )
+    .join("");
+
+  const restHtml = `<div class="cols section"><div class="box"><h3>Drivers de ingresos</h3>${barHtml(
+    salesDrivers
+  )}</div><div class="box"><h3>Insights de ventas</h3><div class="grid">${ventasInsightTiles}</div></div></div><div class="cols section"><div class="box"><h3>Gastos por unidad de negocio</h3>${barHtml(
+    gastosPorUnidad,
+    true
+  )}</div><div class="box"><h3>Gastos por tipo de pago</h3>${barHtml(
+    gastosPorTipoPago,
+    true
+  )}</div></div><div class="section"><div class="box"><h3>Pareto de gastos operativos por categoría</h3>${paretoHtml(
+    expDrivers
+  )}</div></div><div class="cols section"><div class="box"><h3>Formas de pago (gastos)</h3>${barHtml(
+    formasPagoGastos,
+    true
+  )}</div><div class="box"><h3>Gastos compartidos y no operativos</h3>${barHtml(
+    compartidosNoOp,
+    true
+  )}</div></div><div class="section"><h3>4 preguntas estratégicas</h3><div class="questions">${qs}</div></div>`;
+
+  return {
+    title: cfg.title,
+    subtitle: cfg.subtitle,
+    period,
+    cardsHtml,
+    insightsHtml,
+    periodTableHtml,
+    evolutionTableHtml: evoTableHtml,
+    evolutionChartHtml: evoChartHtml,
+    canExpandEvolution: canExpand,
+    restHtml,
+  };
+}
+
+// --- Tablas crudas (gastos/ventas) para el panel de admin ---------------
+
 export type TableKind = "gastos" | "ventas";
+
+export interface GastoTableFilters {
+  categoria?: string;
+  unidad?: string;
+  formaPago?: string;
+  tipoPago?: string;
+}
 
 function rowsTableHtml(rows: DashRow[], kind: TableKind): string {
   if (!rows.length) {
@@ -420,8 +754,8 @@ function rowsTableHtml(rows: DashRow[], kind: TableKind): string {
 
   const headers =
     kind === "gastos"
-      ? ["Fecha", "Unidad", "Categoría", "Detalle", "Forma de pago", "Comprobante", "Monto"]
-      : ["Fecha", "Unidad", "Detalle", "Forma de cobro", "Comprobante", "Monto"];
+      ? ["Fecha", "Nombre", "Unidad", "Categoría", "Detalle", "Forma de pago", "Comprobante", "Monto"]
+      : ["Fecha", "Nombre", "Unidad", "Detalle", "Forma de cobro", "Comprobante", "Monto"];
 
   const theadHtml = `<tr>${headers.map((h) => `<th>${esc(h)}</th>`).join("")}</tr>`;
 
@@ -431,6 +765,7 @@ function rowsTableHtml(rows: DashRow[], kind: TableKind): string {
         kind === "gastos"
           ? [
               esc(r["FECHA DE OPERACION"] || ""),
+              esc(r.NOMBRE || ""),
               esc(r["UNIDAD DE NEGOCIO"] || ""),
               esc(r.CATEGORIA || ""),
               esc(r["DETALLE - CONCEPTO"] || ""),
@@ -440,6 +775,7 @@ function rowsTableHtml(rows: DashRow[], kind: TableKind): string {
             ]
           : [
               esc(r["FECHA DE OPERACION"] || ""),
+              esc(r.NOMBRE || ""),
               esc(r["UNIDAD DE NEGOCIO"] || ""),
               esc(r["DETALLE - CONCEPTO"] || ""),
               esc(r["FORMA DE COBRO O PAGO"] || ""),
@@ -460,16 +796,27 @@ function rowsTableHtml(rows: DashRow[], kind: TableKind): string {
 
 // Vista de tabla cruda para el panel de admin: mismos filtros (año, mes,
 // día, unidad de negocio) que el tablero, pero sin cálculos ni gráficos —
-// el detalle de cada registro del período.
+// el detalle de cada registro del período. La tabla de gastos admite,
+// además, filtros propios por categoría/unidad/forma de pago/tipo de pago.
 export function computeTable(
   ventas: DashRow[],
   gastos: DashRow[],
   f: Filters,
-  kind: TableKind
+  kind: TableKind,
+  gastoFilters?: GastoTableFilters
 ): PageData {
-  const { cv, cg } = currentPrevious(ventas, gastos, f);
-  const rows = kind === "gastos" ? cg : cv;
-  const period = `${f.day === "ALL" ? "Mes completo" : "Día " + f.day} · ${MONTHS[f.m - 1]} ${f.y}`;
+  const cv = filterPeriod(ventas, f);
+  const cg = filterPeriod(gastos, f);
+  let rows = kind === "gastos" ? cg : cv;
+
+  if (kind === "gastos" && gastoFilters) {
+    if (gastoFilters.categoria) rows = rows.filter((r) => r.CATEGORIA === gastoFilters.categoria);
+    if (gastoFilters.unidad) rows = rows.filter((r) => r["UNIDAD DE NEGOCIO"] === gastoFilters.unidad);
+    if (gastoFilters.formaPago) rows = rows.filter((r) => r["FORMA DE COBRO O PAGO"] === gastoFilters.formaPago);
+    if (gastoFilters.tipoPago) rows = rows.filter((r) => r.TIPO === gastoFilters.tipoPago);
+  }
+
+  const period = periodLabelFromFilters(f);
   const title = kind === "gastos" ? "Tabla de gastos" : "Tabla de ventas";
   const subtitle =
     kind === "gastos"
@@ -479,91 +826,18 @@ export function computeTable(
 
   const bodyHtml = `<div class="section"><div class="box"><h3>${esc(
     title
-  )} — ${rows.length} ${countLabel} · Total ${money(sum(rows))}</h3>${rowsTableHtml(
-    rows,
-    kind
-  )}</div></div>`;
+  )} — ${rows.length} ${countLabel} · Total ${money(sum(rows))}</h3>${rowsTableHtml(rows, kind)}</div></div>`;
 
-  return { title, subtitle, period, bodyHtml };
-}
-
-export function computePage(ventas: DashRow[], gastos: DashRow[], f: Filters): PageData {
-  const { cv, cg, pv, pg } = currentPrevious(ventas, gastos, f);
-  const cm = metrics(cv, cg);
-  const pm = metrics(pv, pg);
-  const cfg = PAGE_CONFIG[f.page];
-  const period = `${f.day === "ALL" ? "Mes completo" : "Día " + f.day} · ${MONTHS[f.m - 1]} ${f.y}`;
-
-  const cards = [
-    card("Ingresos", money(cm.ingresos), cm.ingresos, pm.ingresos, true, `${cv.length} operaciones`),
-    card(
-      "Gastos operativos",
-      money(cm.gastosOp),
-      cm.gastosOp,
-      pm.gastosOp,
-      false,
-      `${cg.filter(isOpExpense).length} registros`
-    ),
-    card("GOP", money(cm.gop), cm.gop, pm.gop, true, "Ingresos − gastos operativos"),
-    card("Margen GOP", pct(cm.margen), cm.margen, pm.margen, true, "GOP / ingresos"),
-    card("Ticket promedio", money(cm.ticket), cm.ticket, pm.ticket, true, "Promedio por registro de venta"),
-    card(
-      "Gastos documentados",
-      pct(cm.documented),
-      cm.documented,
-      pm.documented,
-      true,
-      `${cm.noReceipt} sin comprobante`
-    ),
-  ].join("");
-
-  const insights = insightSet(cm, pm)
-    .map((x) => `<div class="insight ${x.c}"><b>${x.t}</b><span>${x.d}</span></div>`)
-    .join("");
-
-  const qs = strategicQuestions(f.page, cv, cg, cm, pm)
-    .map(
-      (q) =>
-        `<div class="question ${q.improve ? "improve" : ""}"><div class="n">${q.n}</div><h4>${q.h}</h4><p>${q.p}</p></div>`
-    )
-    .join("");
-
-  const salesDrivers = groupSum(cv, (r) => norm(r["DETALLE - CONCEPTO"]));
-  const expDrivers = groupSum(cg.filter(isOpExpense), (r) => norm(r.CATEGORIA) || norm(r["DETALLE - CONCEPTO"]));
-
-  let special = "";
-  if (f.page === "global") {
-    special = `<div class="cols section"><div class="box"><h3>Ingresos por unidad de negocio</h3>${barHtml(
-      groupSum(cv, (r) => canonUnit(r["UNIDAD DE NEGOCIO"]))
-    )}</div><div class="box"><h3>Gastos operativos por unidad</h3>${barHtml(
-      groupSum(cg.filter(isOpExpense), (r) => canonUnit(r["UNIDAD DE NEGOCIO"])),
-      true
-    )}</div></div>`;
-  }
-  if (f.page === "alojamiento") {
-    special = `<div class="note section"><b>Próxima evolución de esta hoja:</b> con el formulario actual no se puede calcular ocupación, ADR, RevPAR, noches vendidas ni estadía promedio. Para eso hay que agregar datos de reservas/check-in/check-out y cabaña/unidad.</div>`;
-  }
-  if (f.page === "confiteria") {
-    special = `<div class="note section"><b>Próxima evolución de esta hoja:</b> para medir margen gastronómico real por producto conviene sumar cantidad de tickets, familias de producto y/o un cierre diario de ventas. Hoy el tablero trabaja con ingresos y gastos registrados.</div>`;
-  }
-  if (f.page === "otros") {
-    special = `<div class="cols section"><div class="box"><h3>Inversiones registradas</h3><div style="font-size:28px;font-weight:800">${money(
-      cm.inversiones
-    )}</div><p class="small">Se muestran separadas del GOP.</p></div><div class="box"><h3>Retiros familiares</h3><div style="font-size:28px;font-weight:800">${money(
-      cm.retiros
-    )}</div><p class="small">Tampoco impactan en el GOP operativo.</p></div><div class="box"><h3>Control documental</h3><div style="font-size:28px;font-weight:800">${
-      cm.noReceipt
-    }</div><p class="small">Gastos sin comprobante en el período seleccionado.</p></div></div>`;
-  }
-
-  const bodyHtml = `<div class="grid">${cards}</div><div class="section"><h3>Principales insights</h3><div class="insights">${insights}</div></div><div class="cols section"><div class="box"><h3>Evolución últimos 6 meses</h3>${lineChart(
-    monthSeries(ventas, gastos, f)
-  )}</div><div class="box"><h3>Drivers de ingresos</h3>${barHtml(salesDrivers)}</div></div><div class="cols section"><div class="box"><h3>Drivers de gastos operativos</h3>${barHtml(
-    expDrivers,
-    true
-  )}</div><div class="box"><h3>Formas de cobro</h3>${barHtml(
-    groupSum(cv, (r) => norm(r["FORMA DE COBRO O PAGO"]))
-  )}</div></div>${special}<div class="section"><h3>4 preguntas estratégicas</h3><div class="questions">${qs}</div></div>`;
-
-  return { title: cfg.title, subtitle: cfg.subtitle, period, bodyHtml };
+  return {
+    title,
+    subtitle,
+    period,
+    cardsHtml: "",
+    insightsHtml: "",
+    periodTableHtml: "",
+    evolutionTableHtml: "",
+    evolutionChartHtml: "",
+    canExpandEvolution: false,
+    restHtml: bodyHtml,
+  };
 }
