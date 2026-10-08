@@ -502,6 +502,11 @@ textarea {
   position: relative;
 }
 
+
+.chart-pareto {
+  height: 330px;
+}
+
 .chart svg {
   width: 100%;
   height: 100%;
