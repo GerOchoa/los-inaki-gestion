@@ -151,7 +151,7 @@ export default function DashboardWidget({
             <p className="sub">GOP, ingresos, gastos e insights mensuales para la reunión de gestión.</p>
           </div>
           <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-            <div className="status">Datos de Supabase · actualizado {lastUpdated}</div>
+            <div className="status">Actualizado {lastUpdated}</div>
             <Link className="btn light" href="/formularios/gasto">
               ← Cargar datos
             </Link>
