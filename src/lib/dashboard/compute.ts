@@ -317,20 +317,50 @@ function paretoChartHtml(data: [string, number][]): string {
   const top = data.slice(0, 10);
   const total = data.reduce((a, [, v]) => a + v, 0) || 1;
   const W = 720,
-    H = 230,
-    padL = 54,
-    padR = 44,
-    padT = 20,
+    H = 280,
+    padL = 50,
+    padR = 20,
+    padT = 34,
     padB = 78;
-  const max = Math.max(1, ...top.map((x) => x[1]));
+  const innerW = W - padL - padR;
+  const innerH = H - padT - padB;
   const n = top.length;
-  const bw = (W - padL - padR) / n;
-  const xC = (i: number) => padL + bw * i + bw / 2;
-  const yBar = (v: number) => padT + (1 - v / max) * (H - padT - padB);
-  const yPct = (p: number) => padT + (1 - p / 100) * (H - padT - padB);
+  const maxV = Math.max(1, ...top.map((x) => x[1]));
+  const x = (i: number) => (n === 1 ? padL + innerW / 2 : padL + (i * innerW) / (n - 1));
+  const yPct = (p: number) => padT + (1 - p / 100) * innerH;
 
   let acc = 0;
-  const bars: string[] = [];
+  const points = top.map(([k, v], i) => {
+    acc += v;
+    const cum = (acc / total) * 100;
+    return { x: x(i), y: yPct(cum), cum, v, k };
+  });
+
+  let grid = "";
+  [0, 20, 40, 60, 80, 100].forEach((p) => {
+    const yy = yPct(p);
+    grid += `<line x1="${padL}" y1="${yy.toFixed(1)}" x2="${W - padR}" y2="${yy.toFixed(
+      1
+    )}" stroke="#e7ebf0"/><text x="${(padL - 8).toFixed(1)}" y="${(yy + 3).toFixed(
+      1
+    )}" text-anchor="end" font-size="10" fill="#7b8796">${p}%</text>`;
+  });
+
+  const linePath = points.map((p, i) => `${i ? "L" : "M"} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(" ");
+  const base = (padT + innerH).toFixed(1);
+  const areaPath = `${linePath} L ${points[points.length - 1].x.toFixed(1)} ${base} L ${points[0].x.toFixed(
+    1
+  )} ${base} Z`;
+
+  const bubbles = points
+    .map((p) => {
+      const r = 4 + (p.v / maxV) * 11;
+      return `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${r.toFixed(
+        1
+      )}" fill="#163d5d" fill-opacity="0.85" stroke="#fff" stroke-width="1.5"/>`;
+    })
+    .join("");
+
   const cumLabels = points
     .map(
       (p) =>
@@ -371,7 +401,6 @@ function paretoChartHtml(data: [string, number][]): string {
 
   return `<div class="legend"><span><i class="dot" style="background:#163d5d"></i>% acumulado</span><span class="small muted">Tamaño del punto = monto</span></div><div class="chart"><svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none"><defs><linearGradient id="paretoFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#163d5d" stop-opacity="0.18"/><stop offset="100%" stop-color="#163d5d" stop-opacity="0"/></linearGradient></defs>${grid}${ref80}<path d="${areaPath}" fill="url(#paretoFill)" stroke="none"/><path d="${linePath}" fill="none" stroke="#163d5d" stroke-width="2.5"/>${bubbles}${cumLabels}${valueLabels}${catLabels}</svg></div>`;
 }
-
 // --- Tabla "Detalle por período": una fila por cada período presente en
 // la selección actual (agrupa por día si hay un único mes+año con días
 // específicos elegidos; si no, agrupa por mes). Responde a la selección
