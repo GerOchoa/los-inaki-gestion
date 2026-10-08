@@ -7,7 +7,7 @@ export const CATEGORIA_GASTO_OPTIONS = [
   ["servicios", "Servicios"],
   ["impuestos", "Impuestos"],
   ["mantenimiento", "Mantenimiento"],
-  ["compras_confiteria", "Compras confitería"],
+  ["compras_cafeteria", "Compras cafetería"],
   ["insumo_alojamientos", "Insumo alojamientos"],
   ["marketing", "Marketing"],
   ["combustible_movilidad", "Combustible/movilidad"],
@@ -19,7 +19,7 @@ export const CATEGORIA_GASTO_OPTIONS = [
 
 export const UNIDAD_NEGOCIO_GASTO_OPTIONS = [
   ["alojamiento", "Alojamiento"],
-  ["confiteria", "Confitería"],
+  ["cafeteria", "Cafetería"],
   ["evento", "Evento"],
   ["compartido", "Compartido"],
   ["no_operativo", "No operativo"],
@@ -80,7 +80,7 @@ export interface VentaInput {
   created_by_name: string;
   fecha_operacion: string;
   monto_alojamiento: string;
-  monto_confiteria: string;
+  monto_cafeteria: string;
   monto_eventos: string;
   monto_otros: string;
   detalles: string;
@@ -193,7 +193,7 @@ export function validateVenta(input: VentaInput): { ok: boolean; errors: Validat
 
   const montos = [
     ["monto_alojamiento", input.monto_alojamiento],
-    ["monto_confiteria", input.monto_confiteria],
+    ["monto_cafeteria", input.monto_cafeteria],
     ["monto_eventos", input.monto_eventos],
     ["monto_otros", input.monto_otros],
   ] as const;
