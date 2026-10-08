@@ -519,7 +519,7 @@ textarea {
   flex-wrap: wrap;
   font-size: 11px;
   color: var(--muted);
-  margin-bottom: 5px;
+  margin-bottom: 14px;
 }
 
 .dot {
