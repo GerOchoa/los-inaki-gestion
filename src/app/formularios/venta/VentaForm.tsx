@@ -85,16 +85,16 @@ export default function VentaForm() {
             <FieldError message={errors.monto_alojamiento} />
           </div>
           <div className="field">
-            <label htmlFor="monto_confiteria">Monto confitería</label>
+            <label htmlFor="monto_cafeteria">Monto cafetería</label>
             <input
-              id="monto_confiteria"
-              name="monto_confiteria"
+              id="monto_cafeteria"
+              name="monto_cafeteria"
               type="text"
               inputMode="decimal"
               autoComplete="off"
               defaultValue="0"
             />
-            <FieldError message={errors.monto_confiteria} />
+            <FieldError message={errors.monto_cafeteria} />
           </div>
           <div className="field">
             <label htmlFor="monto_eventos">Monto eventos</label>
