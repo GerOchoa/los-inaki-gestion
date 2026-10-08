@@ -16,6 +16,7 @@ import {
 export interface DashRow {
   id: string;
   "FECHA DE OPERACION": string;
+  NOMBRE: string;
   "UNIDAD DE NEGOCIO": string;
   "DETALLE - CONCEPTO": string;
   MONTO: number;
@@ -38,6 +39,7 @@ export function gastosToRows(gastos: GastoRow[]): DashRow[] {
   return gastos.map((g) => ({
     id: `gasto-${g.id}`,
     "FECHA DE OPERACION": g.fecha_operacion,
+    NOMBRE: g.created_by_name || "",
     "UNIDAD DE NEGOCIO": labelOf(UNIDAD_NEGOCIO_GASTO_OPTIONS, g.unidad_negocio),
     "DETALLE - CONCEPTO": g.detalle_compra || g.rubro_proveedor,
     MONTO: Number(g.monto) || 0,
@@ -52,7 +54,7 @@ export function gastosToRows(gastos: GastoRow[]): DashRow[] {
 }
 
 // Cada venta puede traer plata de varias unidades de negocio a la vez
-// (alojamiento, confitería, eventos, otros). Para reusar la lógica del
+// (alojamiento, cafetería, eventos, otros). Para reusar la lógica del
 // tablero original (una fila = un monto de una sola unidad) generamos una
 // fila "pseudo" por cada monto > 0.
 export function ventasToRows(ventas: VentaRow[]): DashRow[] {
@@ -61,7 +63,7 @@ export function ventasToRows(ventas: VentaRow[]): DashRow[] {
   for (const v of ventas) {
     const montosPorUnidad: [string, number][] = [
       ["ALOJAMIENTO", Number(v.monto_alojamiento) || 0],
-      ["CONFITERIA", Number(v.monto_confiteria) || 0],
+      ["CAFETERIA", Number(v.monto_cafeteria) || 0],
       ["EVENTOS", Number(v.monto_eventos) || 0],
       ["OTROS", Number(v.monto_otros) || 0],
     ];
@@ -71,6 +73,7 @@ export function ventasToRows(ventas: VentaRow[]): DashRow[] {
       out.push({
         id: `venta-${v.id}-${unidad}`,
         "FECHA DE OPERACION": v.fecha_operacion,
+        NOMBRE: v.created_by_name || "",
         "UNIDAD DE NEGOCIO": unidad,
         "DETALLE - CONCEPTO": v.detalles || unidad,
         MONTO: monto,
