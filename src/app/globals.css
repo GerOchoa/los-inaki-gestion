@@ -162,7 +162,6 @@ textarea {
   color: var(--muted);
   margin: 8px 0 0;
 }
-
 .filters {
   display: grid;
   grid-template-columns: repeat(4, minmax(130px, 1fr)) auto;
@@ -170,21 +169,21 @@ textarea {
   align-items: end;
   padding: 14px;
   margin: 12px 0 16px;
+  position: sticky;
+  top: 8px;
+  z-index: 20;
 }
 
-@media (max-width: 900px) {
-  .filters {
-    grid-template-columns: repeat(2, 1fr);
-  }
+.filters select[multiple] {
+  height: auto;
+  min-height: 64px;
 }
 
-@media (max-width: 520px) {
-  .filters {
-    grid-template-columns: 1fr;
-  }
-  .wrap {
-    padding: 12px;
-  }
+.filters .hint {
+  font-size: 10px;
+  color: var(--muted);
+  display: block;
+  margin-top: 2px;
 }
 
 .page {
