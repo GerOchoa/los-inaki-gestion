@@ -12,7 +12,7 @@ export type CategoriaGasto =
   | "servicios"
   | "impuestos"
   | "mantenimiento"
-  | "compras_confiteria"
+  | "compras_cafeteria"
   | "insumo_alojamientos"
   | "marketing"
   | "combustible_movilidad"
@@ -23,7 +23,7 @@ export type CategoriaGasto =
 
 export type UnidadNegocioGasto =
   | "alojamiento"
-  | "confiteria"
+  | "cafeteria"
   | "evento"
   | "compartido"
   | "no_operativo";
@@ -70,7 +70,7 @@ export interface VentaRow {
   id: number;
   fecha_operacion: string;
   monto_alojamiento: number;
-  monto_confiteria: number;
+  monto_cafeteria: number;
   monto_eventos: number;
   monto_otros: number;
   detalles: string | null;
