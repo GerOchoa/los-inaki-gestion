@@ -394,13 +394,13 @@ function paretoChartHtml(data: [string, number][]): string {
 
   const catLabels = points
     .map((p) => {
-      const short = p.k.length > 18 ? p.k.slice(0, 17) + "…" : p.k;
-      const ly = axisY + 9;
-      return `<text x="${p.x.toFixed(1)}" y="${ly.toFixed(
+      const short = p.k.length > 10 ? p.k.slice(0, 9) + "…" : p.k;
+      const ly = axisY + 12;
+      return `<text x="${p.x.toFixed(
         1
-      )}" text-anchor="end" font-size="6.5" font-weight="600" fill="#475569" transform="rotate(-35 ${p.x.toFixed(
-        1
-      )} ${ly.toFixed(1)})">${esc(short)}</text>`;
+      )}" y="${ly.toFixed(1)}" text-anchor="middle" font-size="6.5" font-weight="600" fill="#475569">${esc(
+        short
+      )}</text>`;
     })
     .join("");
 
