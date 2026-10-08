@@ -394,15 +394,32 @@ function paretoChartHtml(data: [string, number][]): string {
 
   const catFontSize = 6.5;
   const maxChars = Math.max(5, Math.floor(bw / (catFontSize * 0.62)) - 1);
+  function wrapLines(k: string): string[] {
+    const words = k.split(" ");
+    const lines: string[] = [];
+    let cur = "";
+    for (const w of words) {
+      const cand = cur ? `${cur} ${w}` : w;
+      if (cand.length > maxChars && cur) {
+        lines.push(cur);
+        cur = w;
+      } else {
+        cur = cand;
+      }
+    }
+    if (cur) lines.push(cur);
+    return lines.slice(0, 2).map((l) => (l.length > maxChars ? l.slice(0, maxChars - 1) + "…" : l));
+  }
   const catLabels = points
     .map((p) => {
-      const short = p.k.length > maxChars ? p.k.slice(0, maxChars - 1) + "…" : p.k;
+      const lines = wrapLines(p.k);
       const ly = axisY + 12;
+      const tspans = lines
+        .map((l, i) => `<tspan x="${p.x.toFixed(1)}" dy="${i === 0 ? 0 : catFontSize + 1.5}">${esc(l)}</tspan>`)
+        .join("");
       return `<text x="${p.x.toFixed(1)}" y="${ly.toFixed(
         1
-      )}" text-anchor="middle" font-size="${catFontSize}" font-weight="600" fill="#475569">${esc(
-        short
-      )}</text>`;
+      )}" text-anchor="middle" font-size="${catFontSize}" font-weight="600" fill="#475569">${tspans}</text>`;
     })
     .join("");
 
