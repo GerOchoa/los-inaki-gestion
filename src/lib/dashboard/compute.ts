@@ -312,17 +312,18 @@ function moneyShort(v: number): string {
   return `${sign}$${Math.round(abs)}`;
 }
 
+// Gráfico de Pareto Lineas + Barras
 
 function paretoChartHtml(data: [string, number][]): string {
   if (!data.length) return "";
   const top = data.slice(0, 10);
   const total = data.reduce((a, [, v]) => a + v, 0) || 1;
   const W = 720,
-    H = 270,
+    H = 330,
     padL = 44,
     padR = 34,
     padT = 16,
-    padB = 62;
+    padB = 86;
   const innerW = W - padL - padR;
   const innerH = H - padT - padB;
   const n = top.length;
@@ -393,11 +394,11 @@ function paretoChartHtml(data: [string, number][]): string {
 
   const catLabels = points
     .map((p) => {
-      const short = p.k.length > 14 ? p.k.slice(0, 13) + "…" : p.k;
+      const short = p.k.length > 18 ? p.k.slice(0, 17) + "…" : p.k;
       const ly = axisY + 9;
       return `<text x="${p.x.toFixed(1)}" y="${ly.toFixed(
         1
-      )}" text-anchor="end" font-size="6" font-weight="600" fill="#475569" transform="rotate(-35 ${p.x.toFixed(
+      )}" text-anchor="end" font-size="6.5" font-weight="600" fill="#475569" transform="rotate(-35 ${p.x.toFixed(
         1
       )} ${ly.toFixed(1)})">${esc(short)}</text>`;
     })
@@ -408,7 +409,7 @@ function paretoChartHtml(data: [string, number][]): string {
     1
   )}" stroke="#c4362f" stroke-dasharray="4 3" stroke-width="1"/>`;
 
-  return `<div class="legend"><span><i class="dot" style="background:#b6672f"></i>Monto</span><span><i class="dot" style="background:#163d5d"></i>% acumulado</span></div><div class="chart"><svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">${grid}${pctAxis}${ref80}${bars}<path d="${linePath}" fill="none" stroke="#163d5d" stroke-width="2"/>${dots}${cumLabels}${valueLabels}${catLabels}</svg></div>`;
+  return `<div class="legend"><span><i class="dot" style="background:#b6672f"></i>Monto</span><span><i class="dot" style="background:#163d5d"></i>% acumulado</span></div><div class="chart chart-pareto""><svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">${grid}${pctAxis}${ref80}${bars}<path d="${linePath}" fill="none" stroke="#163d5d" stroke-width="2"/>${dots}${cumLabels}${valueLabels}${catLabels}</svg></div>`;
 }
 
 // --- Tabla "Detalle por período": una fila por cada período presente en
