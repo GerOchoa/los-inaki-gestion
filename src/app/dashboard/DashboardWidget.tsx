@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import type { DashRow } from "@/lib/dashboard/transform";
@@ -22,8 +22,77 @@ import {
 
 type ViewMode = "dashboard" | "gastos" | "ventas";
 
-function readMultiSelect(e: React.ChangeEvent<HTMLSelectElement>): string[] {
-  return Array.from(e.target.selectedOptions).map((o) => o.value);
+// Combo desplegable con selección múltiple (checkboxes) y opción "Todos".
+// selected = [] significa "todos" (sin restricción).
+function MultiSelectCombo({
+  label,
+  options,
+  selected,
+  onChange,
+}: {
+  label: string;
+  options: { value: string; label: string }[];
+  selected: string[];
+  onChange: (vals: string[]) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function onDocClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", onDocClick);
+    return () => document.removeEventListener("mousedown", onDocClick);
+  }, []);
+
+  const allSelected = selected.length === 0;
+  const summary = allSelected
+    ? "Todos"
+    : selected.length === 1
+      ? options.find((o) => o.value === selected[0])?.label ?? selected[0]
+      : `${selected.length} seleccionados`;
+
+  function toggleValue(v: string) {
+    if (allSelected) {
+      onChange(options.map((o) => o.value).filter((x) => x !== v));
+      return;
+    }
+    if (selected.includes(v)) {
+      onChange(selected.filter((x) => x !== v));
+    } else {
+      const next = [...selected, v];
+      onChange(next.length === options.length ? [] : next);
+    }
+  }
+
+  return (
+    <div className="combo" ref={ref}>
+      <label>{label}</label>
+      <button type="button" className="combo-btn" onClick={() => setOpen((v) => !v)}>
+        <span>{summary}</span>
+        <span className="combo-caret">▾</span>
+      </button>
+      {open && (
+        <div className="combo-panel">
+          <label className="combo-opt">
+            <input type="checkbox" checked={allSelected} onChange={() => onChange([])} />
+            Todos
+          </label>
+          {options.map((o) => (
+            <label className="combo-opt" key={o.value}>
+              <input
+                type="checkbox"
+                checked={allSelected || selected.includes(o.value)}
+                onChange={() => toggleValue(o.value)}
+              />
+              {o.label}
+            </label>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function DashboardWidget({
@@ -103,66 +172,27 @@ export default function DashboardWidget({
       </div>
 
       <div className="box filters">
-        <div>
-          <label>Año</label>
-          <select
-            multiple
-            size={4}
-            value={selectedYears.length ? selectedYears.map(String) : ["ALL"]}
-            onChange={(e) => {
-              const vals = readMultiSelect(e);
-              setSelectedYears(vals.includes("ALL") || !vals.length ? [] : vals.map(Number));
-            }}
-          >
-            <option value="ALL">Todos</option>
-            {yearOptions.map((y) => (
-              <option key={y} value={y}>
-                {y}
-              </option>
-            ))}
-          </select>
-          <span className="hint">Ctrl/Cmd+click para elegir varios</span>
-        </div>
-        <div>
-          <label>Mes</label>
-          <select
-            multiple
-            size={4}
-            value={selectedMonths.length ? selectedMonths.map(String) : ["ALL"]}
-            onChange={(e) => {
-              const vals = readMultiSelect(e);
-              setSelectedMonths(vals.includes("ALL") || !vals.length ? [] : vals.map(Number));
-            }}
-          >
-            <option value="ALL">Todos</option>
-            {MONTHS.map((n, i) => (
-              <option key={n} value={i + 1}>
-                {n}
-              </option>
-            ))}
-          </select>
-          <span className="hint">Ctrl/Cmd+click para elegir varios</span>
-        </div>
-        <div>
-          <label>Día</label>
-          <select
-            multiple
-            size={4}
-            value={selectedDays.length ? selectedDays.map(String) : ["ALL"]}
-            onChange={(e) => {
-              const vals = readMultiSelect(e);
-              setSelectedDays(vals.includes("ALL") || !vals.length ? [] : vals.map(Number));
-            }}
-          >
-            <option value="ALL">Todos</option>
-            {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
-              <option key={d} value={d}>
-                {d}
-              </option>
-            ))}
-          </select>
-          <span className="hint">Ctrl/Cmd+click para elegir varios</span>
-        </div>
+        <MultiSelectCombo
+          label="Año"
+          options={yearOptions.map((y) => ({ value: String(y), label: String(y) }))}
+          selected={selectedYears.map(String)}
+          onChange={(vals) => setSelectedYears(vals.map(Number))}
+        />
+        <MultiSelectCombo
+          label="Mes"
+          options={MONTHS.map((n, i) => ({ value: String(i + 1), label: n }))}
+          selected={selectedMonths.map(String)}
+          onChange={(vals) => setSelectedMonths(vals.map(Number))}
+        />
+        <MultiSelectCombo
+          label="Día"
+          options={Array.from({ length: 31 }, (_, i) => i + 1).map((d) => ({
+            value: String(d),
+            label: String(d),
+          }))}
+          selected={selectedDays.map(String)}
+          onChange={(vals) => setSelectedDays(vals.map(Number))}
+        />
         <div>
           <label>Unidad de negocio</label>
           <select value={unit} onChange={(e) => setUnit(e.target.value)}>
