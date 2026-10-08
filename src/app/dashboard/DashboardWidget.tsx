@@ -6,23 +6,25 @@ import Link from "next/link";
 import type { DashRow } from "@/lib/dashboard/transform";
 import {
   MONTHS,
-  PAGE_CONFIG,
   allYears,
   latestYM,
   computePage,
   computeTable,
-  type PageKey,
   type Filters,
+  type GastoTableFilters,
 } from "@/lib/dashboard/compute";
+import {
+  CATEGORIA_GASTO_OPTIONS,
+  UNIDAD_NEGOCIO_GASTO_OPTIONS,
+  FORMA_PAGO_OPTIONS,
+  TIPO_PAGO_OPTIONS,
+} from "@/lib/validation";
 
 type ViewMode = "dashboard" | "gastos" | "ventas";
 
-const TABS: { key: PageKey; label: string }[] = [
-  { key: "global", label: "1. Global / GOP" },
-  { key: "alojamiento", label: "2. Alojamiento" },
-  { key: "confiteria", label: "3. Confitería" },
-  { key: "otros", label: "4. Otros / Gestión" },
-];
+function readMultiSelect(e: React.ChangeEvent<HTMLSelectElement>): string[] {
+  return Array.from(e.target.selectedOptions).map((o) => o.value);
+}
 
 export default function DashboardWidget({
   ventas,
@@ -37,25 +39,39 @@ export default function DashboardWidget({
   const years = useMemo(() => allYears(ventas, gastos), [ventas, gastos]);
   const initial = useMemo(() => latestYM(ventas, gastos), [ventas, gastos]);
 
-  const [page, setPage] = useState<PageKey>("global");
-  const [year, setYear] = useState(years.includes(initial.y) ? initial.y : initial.y);
-  const [month, setMonth] = useState(initial.m);
-  const [day, setDay] = useState("ALL");
-  const [globalUnit, setGlobalUnit] = useState("ALL");
+  const [selectedYears, setSelectedYears] = useState<number[]>([initial.y]);
+  const [selectedMonths, setSelectedMonths] = useState<number[]>([initial.m]);
+  const [selectedDays, setSelectedDays] = useState<number[]>([]);
+  const [unit, setUnit] = useState("ALL");
   const [refreshing, setRefreshing] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>("dashboard");
+  const [expandedChart, setExpandedChart] = useState(false);
 
-  const unit = page === "global" ? globalUnit : "ALL";
+  const [gastoCategoria, setGastoCategoria] = useState("");
+  const [gastoUnidad, setGastoUnidad] = useState("");
+  const [gastoFormaPago, setGastoFormaPago] = useState("");
+  const [gastoTipoPago, setGastoTipoPago] = useState("");
+
+  const filters: Filters = useMemo(
+    () => ({ page: "global", years: selectedYears, months: selectedMonths, days: selectedDays, unit }),
+    [selectedYears, selectedMonths, selectedDays, unit]
+  );
 
   const data = useMemo(() => {
-    const filters: Filters = { page, y: year, m: month, day, unit };
-    if (viewMode === "gastos") return computeTable(ventas, gastos, filters, "gastos");
+    if (viewMode === "gastos") {
+      const gastoFilters: GastoTableFilters = {
+        categoria: gastoCategoria || undefined,
+        unidad: gastoUnidad || undefined,
+        formaPago: gastoFormaPago || undefined,
+        tipoPago: gastoTipoPago || undefined,
+      };
+      return computeTable(ventas, gastos, filters, "gastos", gastoFilters);
+    }
     if (viewMode === "ventas") return computeTable(ventas, gastos, filters, "ventas");
-    return computePage(ventas, gastos, filters);
-  }, [ventas, gastos, page, year, month, day, unit, viewMode]);
+    return computePage(ventas, gastos, filters, expandedChart);
+  }, [ventas, gastos, filters, viewMode, expandedChart, gastoCategoria, gastoUnidad, gastoFormaPago, gastoTipoPago]);
 
   const yearOptions = years.length ? years : [initial.y];
-  const cfg = PAGE_CONFIG[page];
 
   return (
     <div className="wrap">
@@ -86,42 +102,58 @@ export default function DashboardWidget({
         </div>
       </div>
 
-      <div className="tabs">
-        {TABS.map((t) => (
-          <button
-            key={t.key}
-            className={`tab ${page === t.key ? "active" : ""}`}
-            onClick={() => setPage(t.key)}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
-
       <div className="box filters">
         <div>
           <label>Año</label>
-          <select value={year} onChange={(e) => setYear(Number(e.target.value))}>
+          <select
+            multiple
+            size={4}
+            value={selectedYears.length ? selectedYears.map(String) : ["ALL"]}
+            onChange={(e) => {
+              const vals = readMultiSelect(e);
+              setSelectedYears(vals.includes("ALL") || !vals.length ? [] : vals.map(Number));
+            }}
+          >
+            <option value="ALL">Todos</option>
             {yearOptions.map((y) => (
               <option key={y} value={y}>
                 {y}
               </option>
             ))}
           </select>
+          <span className="hint">Ctrl/Cmd+click para elegir varios</span>
         </div>
         <div>
           <label>Mes</label>
-          <select value={month} onChange={(e) => setMonth(Number(e.target.value))}>
+          <select
+            multiple
+            size={4}
+            value={selectedMonths.length ? selectedMonths.map(String) : ["ALL"]}
+            onChange={(e) => {
+              const vals = readMultiSelect(e);
+              setSelectedMonths(vals.includes("ALL") || !vals.length ? [] : vals.map(Number));
+            }}
+          >
+            <option value="ALL">Todos</option>
             {MONTHS.map((n, i) => (
               <option key={n} value={i + 1}>
                 {n}
               </option>
             ))}
           </select>
+          <span className="hint">Ctrl/Cmd+click para elegir varios</span>
         </div>
         <div>
           <label>Día</label>
-          <select value={day} onChange={(e) => setDay(e.target.value)}>
+          <select
+            multiple
+            size={4}
+            value={selectedDays.length ? selectedDays.map(String) : ["ALL"]}
+            onChange={(e) => {
+              const vals = readMultiSelect(e);
+              setSelectedDays(vals.includes("ALL") || !vals.length ? [] : vals.map(Number));
+            }}
+          >
             <option value="ALL">Todos</option>
             {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
               <option key={d} value={d}>
@@ -129,22 +161,17 @@ export default function DashboardWidget({
               </option>
             ))}
           </select>
+          <span className="hint">Ctrl/Cmd+click para elegir varios</span>
         </div>
         <div>
           <label>Unidad de negocio</label>
-          {page === "global" ? (
-            <select value={globalUnit} onChange={(e) => setGlobalUnit(e.target.value)}>
-              <option value="ALL">Todas</option>
-              <option value="ALOJAMIENTO">ALOJAMIENTO</option>
-              <option value="CONFITERIA">CONFITERIA</option>
-              <option value="EVENTOS">EVENTOS</option>
-              <option value="OTROS">OTROS</option>
-            </select>
-          ) : (
-            <select disabled value="FIXED">
-              <option value="FIXED">{(cfg.scope || []).join(" + ")}</option>
-            </select>
-          )}
+          <select value={unit} onChange={(e) => setUnit(e.target.value)}>
+            <option value="ALL">Todas</option>
+            <option value="ALOJAMIENTO">ALOJAMIENTO</option>
+            <option value="CAFETERIA">CAFETERIA</option>
+            <option value="EVENTOS">EVENTOS</option>
+            <option value="OTROS">OTROS</option>
+          </select>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
           <button
@@ -163,6 +190,55 @@ export default function DashboardWidget({
         </div>
       </div>
 
+      {viewMode === "gastos" && (
+        <div className="box filters" style={{ position: "static" }}>
+          <div>
+            <label>Categoría</label>
+            <select value={gastoCategoria} onChange={(e) => setGastoCategoria(e.target.value)}>
+              <option value="">Todas</option>
+              {CATEGORIA_GASTO_OPTIONS.map(([, l]) => (
+                <option key={l} value={l.toUpperCase()}>
+                  {l}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label>Unidad de negocio</label>
+            <select value={gastoUnidad} onChange={(e) => setGastoUnidad(e.target.value)}>
+              <option value="">Todas</option>
+              {UNIDAD_NEGOCIO_GASTO_OPTIONS.map(([, l]) => (
+                <option key={l} value={l.toUpperCase()}>
+                  {l}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label>Forma de pago</label>
+            <select value={gastoFormaPago} onChange={(e) => setGastoFormaPago(e.target.value)}>
+              <option value="">Todas</option>
+              {FORMA_PAGO_OPTIONS.map(([, l]) => (
+                <option key={l} value={l.toUpperCase()}>
+                  {l}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label>Tipo de pago</label>
+            <select value={gastoTipoPago} onChange={(e) => setGastoTipoPago(e.target.value)}>
+              <option value="">Todos</option>
+              {TIPO_PAGO_OPTIONS.map(([, l]) => (
+                <option key={l} value={l.toUpperCase()}>
+                  {l}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+      )}
+
       <main>
         <section className="page active">
           <div className="page-head">
@@ -172,7 +248,45 @@ export default function DashboardWidget({
             </div>
             <div className="period">{data.period}</div>
           </div>
-          <div dangerouslySetInnerHTML={{ __html: data.bodyHtml }} />
+
+          {viewMode === "dashboard" ? (
+            <>
+              <div dangerouslySetInnerHTML={{ __html: data.cardsHtml }} />
+              <div dangerouslySetInnerHTML={{ __html: data.insightsHtml }} />
+
+              <div className="section box">
+                <h3>Detalle por período</h3>
+                <div dangerouslySetInnerHTML={{ __html: data.periodTableHtml }} />
+              </div>
+
+              <div className="section box">
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    flexWrap: "wrap",
+                    gap: 8,
+                  }}
+                >
+                  <h3 style={{ margin: 0 }}>
+                    Evolución {expandedChart ? "— historial completo" : "— desde agosto 2026"}
+                  </h3>
+                  {data.canExpandEvolution && (
+                    <button className="btn light" onClick={() => setExpandedChart((v) => !v)}>
+                      {expandedChart ? "Ver desde ago. 2026" : "Ampliar período"}
+                    </button>
+                  )}
+                </div>
+                <div dangerouslySetInnerHTML={{ __html: data.evolutionTableHtml }} />
+                <div dangerouslySetInnerHTML={{ __html: data.evolutionChartHtml }} />
+              </div>
+
+              <div dangerouslySetInnerHTML={{ __html: data.restHtml }} />
+            </>
+          ) : (
+            <div dangerouslySetInnerHTML={{ __html: data.restHtml }} />
+          )}
         </section>
       </main>
 
