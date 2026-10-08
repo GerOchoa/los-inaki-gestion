@@ -304,6 +304,61 @@ function barHtml(data: [string, number][], expense = false): string {
     : '<div class="muted">Sin datos para el período.</div>';
 }
 
+function paretoChartHtml(data: [string, number][]): string {
+  if (!data.length) return "";
+  const top = data.slice(0, 10);
+  const total = data.reduce((a, [, v]) => a + v, 0) || 1;
+  const W = 720,
+    H = 230,
+    padL = 54,
+    padR = 44,
+    padT = 20,
+    padB = 50;
+  const max = Math.max(1, ...top.map((x) => x[1]));
+  const n = top.length;
+  const bw = (W - padL - padR) / n;
+  const xC = (i: number) => padL + bw * i + bw / 2;
+  const yBar = (v: number) => padT + (1 - v / max) * (H - padT - padB);
+  const yPct = (p: number) => padT + (1 - p / 100) * (H - padT - padB);
+
+  let acc = 0;
+  const bars: string[] = [];
+  const labels: string[] = [];
+  const points: { x: number; y: number }[] = [];
+  top.forEach(([k, v], i) => {
+    acc += v;
+    const cum = (acc / total) * 100;
+    const bh = (v / max) * (H - padT - padB);
+    bars.push(
+      `<rect x="${(padL + bw * i + bw * 0.15).toFixed(1)}" y="${yBar(v).toFixed(1)}" width="${(
+        bw * 0.7
+      ).toFixed(1)}" height="${bh.toFixed(1)}" fill="#b6672f" rx="3"/>`
+    );
+    points.push({ x: xC(i), y: yPct(cum) });
+    const short = k.length > 10 ? k.slice(0, 9) + "…" : k;
+    labels.push(
+      `<text x="${xC(i).toFixed(1)}" y="${H - padB + 16}" text-anchor="middle" font-size="9" fill="#7b8796">${esc(
+        short
+      )}</text>`
+    );
+  });
+
+  const linePath = points.map((p, i) => `${i ? "L" : "M"} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(" ");
+  const dots = points.map((p) => `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="3" fill="#163d5d"/>`).join("");
+  const y80 = yPct(80);
+  const ref80 = `<line x1="${padL}" y1="${y80.toFixed(1)}" x2="${W - padR}" y2="${y80.toFixed(
+    1
+  )}" stroke="#c4362f" stroke-dasharray="4 3" stroke-width="1"/><text x="${W - padR + 4}" y="${(
+    y80 + 3
+  ).toFixed(1)}" font-size="9" fill="#c4362f">80%</text>`;
+
+  return `<div class="legend"><span><i class="dot" style="background:#b6672f"></i>Monto</span><span><i class="dot" style="background:#163d5d"></i>% acumulado</span></div><div class="chart"><svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">${bars.join(
+    ""
+  )}${ref80}<path d="${linePath}" fill="none" stroke="#163d5d" stroke-width="2.5"/>${dots}${labels.join(
+    ""
+  )}</svg></div>`;
+}
+
 function paretoHtml(data: [string, number][]): string {
   if (!data.length) return '<div class="muted">Sin datos para el período.</div>';
   const total = data.reduce((a, [, v]) => a + v, 0) || 1;
@@ -708,9 +763,9 @@ export function computePage(
   )}</div><div class="box"><h3>Gastos por tipo de pago</h3>${barHtml(
     gastosPorTipoPago,
     true
-  )}</div></div><div class="section"><div class="box"><h3>Pareto de gastos operativos por categoría</h3>${paretoHtml(
+  )}</div></div><div class="section"><div class="box"><h3>Gastos operativos por categoría</h3>${paretoChartHtml(
     expDrivers
-  )}</div></div><div class="cols section"><div class="box"><h3>Formas de pago (gastos)</h3>${barHtml(
+  )}${paretoHtml(expDrivers)}</div></div><div class="cols section"><div class="box"><h3>Formas de pago (gastos)</h3>${barHtml(
     formasPagoGastos,
     true
   )}</div><div class="box"><h3>Gastos compartidos y no operativos</h3>${barHtml(
