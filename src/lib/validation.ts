@@ -3,7 +3,7 @@
 // formulario (feedback inmediato) y la server action (fuente de verdad).
 
 export const CATEGORIA_GASTO_OPTIONS = [
-  ["personal", "Personal"],
+  ["personal", "Sueldo"],
   ["servicios", "Servicios"],
   ["impuestos", "Impuestos"],
   ["mantenimiento", "Mantenimiento"],
