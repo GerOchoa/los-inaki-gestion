@@ -80,7 +80,9 @@ export function pct(n: number): string {
 function isOpExpense(r: DashRow): boolean {
   return norm(r.TIPO).includes("GASTO OPERATIVO");
 }
-
+function isConsumoInterno(r: DashRow): boolean {
+  return norm(r["FORMA DE COBRO O PAGO"]) === "CONSUMO INTERNO";
+}
 function isInvestment(r: DashRow): boolean {
   return norm(r.TIPO).includes("INVERSION");
 }
@@ -214,10 +216,11 @@ export interface Metrics {
 
 function metrics(v: DashRow[], g: DashRow[]): Metrics {
   const op = g.filter(isOpExpense);
+  const opCash = op.filter((r) => !isConsumoInterno(r));
   const inv = g.filter(isInvestment);
   const ret = g.filter(isRetiro);
   const ingresos = sum(v);
-  const gastosOp = sum(op);
+  const gastosOp = sum(opCash);
   const gop = ingresos - gastosOp;
   const margen = ingresos ? (gop / ingresos) * 100 : 0;
   const ticket = avg(v);
