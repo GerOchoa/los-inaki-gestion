@@ -53,6 +53,22 @@ function MultiSelectCombo({
       ? options.find((o) => o.value === selected[0])?.label ?? selected[0]
       : `${selected.length} seleccionados`;
 
+  function stripId(rows: DashRow[]) {
+  return rows.map((r) => {
+    const copy: Record<string, unknown> = { ...r };
+    delete copy.id;
+    return copy;
+  });
+}
+
+async function exportExcel(ventas: DashRow[], gastos: DashRow[]) {
+  const XLSX = await import("xlsx");
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(stripId(gastos)), "Gastos");
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(stripId(ventas)), "Ventas");
+  XLSX.writeFile(wb, `los-inaki-datos-${new Date().toISOString().slice(0, 10)}.xlsx`);
+}
+
   function toggleValue(v: string) {
     if (allSelected) {
       onChange([v]);
@@ -216,6 +232,9 @@ export default function DashboardWidget({
           </button>
           <button className="btn light" onClick={() => window.print()}>
             Exportar PDF
+          </button>
+          <button className="btn light" onClick={() => exportExcel(ventas, gastos)}>
+            Exportar Excel
           </button>
         </div>
       </div>
