@@ -81,7 +81,7 @@ function isOpExpense(r: DashRow): boolean {
   return norm(r.TIPO).includes("GASTO OPERATIVO");
 }
 function isConsumoInterno(r: DashRow): boolean {
-  return norm(r["FORMA DE COBRO O PAGO"]) === "CONSUMO INTERNO";
+  return norm(r["FORMA DE COBRO O PAGO"]) === "CONSUMO INTERNO" || norm(r.CATEGORIA) === "RETIRO DE MERCADERÍA";
 }
 function isInvestment(r: DashRow): boolean {
   return norm(r.TIPO).includes("INVERSION");
