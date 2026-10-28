@@ -310,6 +310,9 @@ textarea {
   font-weight: 800;
   margin: 8px 0 6px;
 }
+.kpi .v.negative {
+  color: var(--bad);
+}
 
 .kpi .compare {
   display: inline-flex;
