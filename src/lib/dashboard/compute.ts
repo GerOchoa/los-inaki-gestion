@@ -274,7 +274,8 @@ function card(
     ? compHtml(cur, prev, higherBetter)
     : '<span class="compare flat">• período combinado</span>';
   const detailText = comparable ? `vs. mes anterior · ${detail || ""}` : detail || "";
-  return `<div class="kpi"><div class="t">${title}</div><div class="v">${value}</div>${compare}<div class="d">${detailText}</div></div>`;
+  const valueClass = cur < 0 ? "v negative" : "v";
+  return `<div class="kpi"><div class="t">${title}</div><div class="${valueClass}">${value}</div>${compare}<div class="d">${detailText}</div></div>`;
 }
 
 function statTile(title: string, value: string, detail?: string): string {
