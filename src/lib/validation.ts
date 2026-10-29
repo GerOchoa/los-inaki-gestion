@@ -9,11 +9,9 @@ export const CATEGORIA_GASTO_OPTIONS = [
   ["mantenimiento", "Mantenimiento"],
   ["compras_cafeteria", "Compras cafetería"],
   ["insumo_alojamientos", "Insumo alojamientos"],
-  ["marketing", "Marketing"],
   ["combustible_movilidad", "Combustible/movilidad"],
   ["honorarios", "Honorarios"],
   ["comision", "Comisión"],
-  ["caja_chica", "Caja chica"],
   ["retiro_mercaderia", "Retiro de mercadería"],
   ["otros", "Otros"],
 ] as const;
