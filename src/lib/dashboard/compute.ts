@@ -396,6 +396,19 @@ function paretoChartHtml(data: [string, number][]): string {
     })
     .join("");
 
+function gastoDetailTableHtml(rows: DashRow[]): string {
+  if (!rows.length) return '<div class="muted">Sin datos para el período.</div>';
+  const body = rows
+    .map(
+      (r) =>
+        `<tr><td>${esc(r.NOMBRE)}</td><td>${esc(r["DETALLE - CONCEPTO"])}</td><td class="right">${money(
+          r.MONTO
+        )}</td></tr>`
+    )
+    .join("");
+  return `<div class="table-wrap"><table class="tbl"><thead><tr><th>Nombre</th><th>Detalle</th><th class="right">Monto</th></tr></thead><tbody>${body}</tbody></table></div>`;
+}
+  
   const catFontSize = 6.5;
   const maxChars = Math.max(5, Math.floor(bw / (catFontSize * 0.62)) - 1);
   function wrapLines(k: string): string[] {
@@ -795,6 +808,8 @@ export function computePage(
   const gastosPorUnidad = groupSum(cg.filter(isOpExpense), (r) => canonUnit(r["UNIDAD DE NEGOCIO"]));
   const gastosPorTipoPago = groupSum(cg, (r) => norm(r.TIPO));
   const expDrivers = groupSum(cg.filter(isOpExpense), (r) => norm(r.CATEGORIA) || norm(r["DETALLE - CONCEPTO"]));
+  const sueldos = cg.filter((r) => norm(r.CATEGORIA) === "SUELDO");
+  const retiroMerc = cg.filter((r) => norm(r.CATEGORIA) === "RETIRO DE MERCADERÍA");
   const formasPagoGastos = groupSum(cg.filter(isOpExpense), (r) => norm(r["FORMA DE COBRO O PAGO"]));
   const compartidosNoOp = groupSum(
     cg.filter((r) => ["COMPARTIDO", "NO OPERATIVO"].includes(norm(r["UNIDAD DE NEGOCIO"]))),
@@ -818,7 +833,11 @@ export function computePage(
     true
   )}</div></div><div class="section"><div class="box"><h3>Gastos operativos por categoría</h3>${paretoChartHtml(
     expDrivers
-    )}</div></div><div class="cols section"><div class="box"><h3>Formas de pago (gastos)</h3>${barHtml(
+  )}</div></div><div class="cols section"><div class="box"><h3>Sueldos</h3>${gastoDetailTableHtml(
+    sueldos
+  )}</div><div class="box"><h3>Retiro de mercadería</h3>${gastoDetailTableHtml(
+    retiroMerc
+  )}</div></div><div class="cols section"><div class="box"><h3>Formas de pago (gastos)</h3>${barHtml(
     formasPagoGastos,
     true
   )}</div><div class="box"><h3>Gastos compartidos y no operativos</h3>${barHtml(
