@@ -317,6 +317,18 @@ function moneyShort(v: number): string {
 }
 
 // Gráfico de Pareto Lineas + Barras
+function gastoDetailTableHtml(rows: DashRow[]): string {
+  if (!rows.length) return '<div class="muted">Sin datos para el período.</div>';
+  const body = rows
+    .map(
+      (r) =>
+        `<tr><td>${esc(r.NOMBRE)}</td><td>${esc(r["DETALLE - CONCEPTO"])}</td><td class="right">${money(
+          r.MONTO
+        )}</td></tr>`
+    )
+    .join("");
+  return `<div class="table-wrap"><table class="tbl"><thead><tr><th>Nombre</th><th>Detalle</th><th class="right">Monto</th></tr></thead><tbody>${body}</tbody></table></div>`;
+}
 
 function paretoChartHtml(data: [string, number][]): string {
   if (!data.length) return "";
@@ -395,19 +407,6 @@ function paretoChartHtml(data: [string, number][]): string {
       )}" text-anchor="middle" font-size="7.5" fill="#7b8796">${moneyShort(v)}</text>`;
     })
     .join("");
-
-function gastoDetailTableHtml(rows: DashRow[]): string {
-  if (!rows.length) return '<div class="muted">Sin datos para el período.</div>';
-  const body = rows
-    .map(
-      (r) =>
-        `<tr><td>${esc(r.NOMBRE)}</td><td>${esc(r["DETALLE - CONCEPTO"])}</td><td class="right">${money(
-          r.MONTO
-        )}</td></tr>`
-    )
-    .join("");
-  return `<div class="table-wrap"><table class="tbl"><thead><tr><th>Nombre</th><th>Detalle</th><th class="right">Monto</th></tr></thead><tbody>${body}</tbody></table></div>`;
-}
   
   const catFontSize = 6.5;
   const maxChars = Math.max(5, Math.floor(bw / (catFontSize * 0.62)) - 1);
