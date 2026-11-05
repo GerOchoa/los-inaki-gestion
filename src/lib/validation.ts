@@ -165,7 +165,7 @@ export function validateGasto(input: GastoInput): { ok: boolean; errors: Validat
   );
 
   const monto = parseMonto(input.monto);
-  if (monto === null || monto <= 0) {
+  if (monto === null || monto < 0) {
     errors.monto = "El monto debe ser un número mayor a 0.";
   }
 
@@ -207,9 +207,9 @@ export function validateVenta(input: VentaInput): { ok: boolean; errors: Validat
     }
   }
 
-  if (total <= 0) {
-    errors.monto_alojamiento = errors.monto_alojamiento || "Cargá al menos un monto mayor a 0.";
-  }
+  // if (total <= 0) {
+  //  errors.monto_alojamiento = errors.monto_alojamiento || "Cargá al menos un monto mayor a 0.";
+  // }
 
   return { ok: Object.keys(errors).length === 0, errors };
 }
