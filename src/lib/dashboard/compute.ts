@@ -276,7 +276,8 @@ function card(
     : '<span class="compare flat">• período combinado</span>';
   const detailText = comparable ? `vs. mes anterior · ${detail || ""}` : detail || "";
   const valueClass = cur < 0 ? "v negative" : "v";
-  return `<div class="kpi"><div class="t">${title}</div><div class="${valueClass}">${value}</div>${compare}<div class="d">${detailText}</div></div>`;
+  const kpiClass = statusClass ? `kpi ${statusClass}` : "kpi";
+  return `<div class="${kpiClass}"><div class="t">${title}</div><div class="${valueClass}">${value}</div>${compare}<div class="d">${detailText}</div></div>`;
 }
 
 function statTile(title: string, value: string, detail?: string): string {
@@ -899,13 +900,14 @@ function rowsTableHtml(rows: DashRow[], kind: TableKind): string {
 
   const headers =
     kind === "gastos"
-      ? ["Fecha", "Nombre", "Unidad", "Categoría", "Detalle", "Forma de pago", "Comprobante", "Monto"]
-      : ["Fecha", "Nombre", "Unidad", "Detalle", "Forma de cobro", "Comprobante", "Monto"];
+      ? ["Fecha", "Nombre", "Unidad", "Categoría", "Detalle", "Forma de pago", "Comprobante", "Monto", "Acción"]
+      : ["Fecha", "Nombre", "Unidad", "Detalle", "Forma de cobro", "Comprobante", "Monto", "Acción"];
 
   const theadHtml = `<tr>${headers.map((h) => `<th>${esc(h)}</th>`).join("")}</tr>`;
 
   const bodyRows = sorted
     .map((r) => {
+      const editBtn = `<button type="button" class="btn-edit" data-edit-id="${r.rawId}" data-edit-kind="${kind}">Editar</button>`;
       const cells =
         kind === "gastos"
           ? [
@@ -917,6 +919,7 @@ function rowsTableHtml(rows: DashRow[], kind: TableKind): string {
               esc(r["FORMA DE COBRO O PAGO"] || ""),
               esc(r["TIPO DE COMPROBANTE"] || ""),
               `<span class="right">${money(getMonto(r))}</span>`,
+              editBtn,
             ]
           : [
               esc(r["FECHA DE OPERACION"] || ""),
@@ -926,10 +929,16 @@ function rowsTableHtml(rows: DashRow[], kind: TableKind): string {
               esc(r["FORMA DE COBRO O PAGO"] || ""),
               esc(r["TIPO DE COMPROBANTE"] || ""),
               `<span class="right">${money(getMonto(r))}</span>`,
+              editBtn,
             ];
       return `<tr>${cells.map((c) => `<td>${c}</td>`).join("")}</tr>`;
     })
     .join("");
+
+  const colsBeforeTotal = headers.length - 2; // todas menos Monto y Acción
+  const totalRow = `<tr><td colspan="${colsBeforeTotal}"><b>Total</b></td><td class="right"><b>${money(
+    sum(rows)
+  )}</b></td><td></td></tr>`;
 
   const colsBeforeTotal = headers.length - 1;
   const totalRow = `<tr><td colspan="${colsBeforeTotal}"><b>Total</b></td><td class="right"><b>${money(
