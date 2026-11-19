@@ -50,6 +50,12 @@ export default async function DashboardPage() {
   const lastUpdated = new Date().toLocaleString("es-AR", {
   timeZone: "America/Argentina/Buenos_Aires",
 });
-
-  return <DashboardWidget ventas={rowsVentas} gastos={rowsGastos} lastUpdated={lastUpdated} />;
-}
+  return (
+    <DashboardWidget
+      ventas={rowsVentas}
+      gastos={rowsGastos}
+      rawGastos={(gastos as GastoRow[]) || []}
+      rawVentas={(ventas as VentaRow[]) || []}
+      lastUpdated={lastUpdated}
+    />
+  );
