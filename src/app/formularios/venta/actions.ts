@@ -66,3 +66,58 @@ export async function submitVenta(
 
   return { success: true };
 }
+
+// Usada desde el modal de edición del panel admin: se liga el id con
+// .bind(null, id) antes de pasarla a useActionState, así conserva la misma
+// firma (prevState, formData) que submitVenta.
+export async function updateVenta(
+  id: number,
+  _prevState: VentaFormState,
+  formData: FormData
+): Promise<VentaFormState> {
+  const input: VentaInput = {
+    created_by_name: String(formData.get("created_by_name") || ""),
+    fecha_operacion: String(formData.get("fecha_operacion") || ""),
+    monto_alojamiento: String(formData.get("monto_alojamiento") || ""),
+    monto_cafeteria: String(formData.get("monto_cafeteria") || ""),
+    monto_eventos: String(formData.get("monto_eventos") || ""),
+    monto_otros: String(formData.get("monto_otros") || ""),
+    detalles: String(formData.get("detalles") || ""),
+    forma_cobro: String(formData.get("forma_cobro") || ""),
+    tiene_comprobante: String(formData.get("tiene_comprobante") || ""),
+    numero_comprobante: String(formData.get("numero_comprobante") || ""),
+    tipo_comprobante: String(formData.get("tipo_comprobante") || ""),
+    observaciones: String(formData.get("observaciones") || ""),
+  };
+
+  const { ok, errors } = validateVenta(input);
+  if (!ok) {
+    return { errors };
+  }
+
+  const supabase = await createSupabaseServerClient();
+
+  const { error } = await supabase
+    .from("ventas")
+    .update({
+      created_by_name: input.created_by_name.trim(),
+      fecha_operacion: input.fecha_operacion,
+      monto_alojamiento: toNumber(input.monto_alojamiento),
+      monto_cafeteria: toNumber(input.monto_cafeteria),
+      monto_eventos: toNumber(input.monto_eventos),
+      monto_otros: toNumber(input.monto_otros),
+      detalles: input.detalles.trim() || null,
+      forma_cobro: input.forma_cobro,
+      tiene_comprobante: input.tiene_comprobante === "si",
+      numero_comprobante: input.numero_comprobante.trim() || null,
+      tipo_comprobante: input.tipo_comprobante || null,
+      observaciones: input.observaciones.trim() || null,
+    })
+    .eq("id", id);
+
+  if (error) {
+    return { formError: "No se pudo actualizar la venta. Intentá de nuevo." };
+  }
+
+  return { success: true };
+}
