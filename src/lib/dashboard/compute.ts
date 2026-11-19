@@ -940,10 +940,10 @@ function rowsTableHtml(rows: DashRow[], kind: TableKind): string {
     sum(rows)
   )}</b></td><td></td></tr>`;
 
-  const colsBeforeTotal = headers.length - 1;
-  const totalRow = `<tr><td colspan="${colsBeforeTotal}"><b>Total</b></td><td class="right"><b>${money(
-    sum(rows)
-  )}</b></td></tr>`;
+const colsBeforeTotal = headers.length - 2; // todas menos Monto y Acción
+const totalRow = `<tr><td colspan="${colsBeforeTotal}"><b>Total</b></td><td class="right"><b>${money(
+  sum(rows)
+)}</b></td><td></td></tr>`;
 
   return `<div class="table-wrap"><table class="tbl"><thead>${theadHtml}</thead><tbody>${bodyRows}${totalRow}</tbody></table></div>`;
 }
