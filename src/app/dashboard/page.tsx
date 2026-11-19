@@ -58,4 +58,5 @@ export default async function DashboardPage() {
       rawVentas={(ventas as VentaRow[]) || []}
       lastUpdated={lastUpdated}
     />
-  );
+ );
+}
