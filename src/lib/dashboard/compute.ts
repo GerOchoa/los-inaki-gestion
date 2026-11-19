@@ -268,7 +268,8 @@ function card(
   prev: number,
   higherBetter: boolean,
   detail: string,
-  comparable: boolean
+  comparable: boolean,
+  statusClass?: string
 ): string {
   const compare = comparable
     ? compHtml(cur, prev, higherBetter)
@@ -444,7 +445,7 @@ function paretoChartHtml(data: [string, number][]): string {
     1
   )}" stroke="#c4362f" stroke-dasharray="4 3" stroke-width="1"/>`;
 
-  return `<div class="legend"><span><i class="dot" style="background:#b6672f"></i>Monto</span><span><i class="dot" style="background:#163d5d"></i>% acumulado</span></div><div class="chart chart-pareto""><svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">${grid}${pctAxis}${ref80}${bars}<path d="${linePath}" fill="none" stroke="#163d5d" stroke-width="2"/>${dots}${cumLabels}${valueLabels}${catLabels}</svg></div>`;
+  return `<div class="legend"><span><i class="dot" style="background:#b6672f"></i>Monto</span><span><i class="dot" style="background:#163d5d"></i>% acumulado</span></div><div class="chart chart-pareto"><svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">${grid}${pctAxis}${ref80}${bars}<path d="${linePath}" fill="none" stroke="#163d5d" stroke-width="2"/>${dots}${cumLabels}${valueLabels}${catLabels}</svg></div>`;
 }
 
 // --- Tabla "Detalle por período": una fila por cada período presente en
@@ -769,8 +770,26 @@ export function computePage(
       `${cg.filter(isOpExpense).length} registros`,
       comparable
     ),
-    card("GOP", money(cm.gop), cm.gop, pm.gop, true, "Ingresos − gastos operativos", comparable),
-    card("Margen GOP", pct(cm.margen), cm.margen, pm.margen, true, "GOP / ingresos", comparable),
+    card(
+      "GOP",
+      money(cm.gop),
+      cm.gop,
+      pm.gop,
+      true,
+      "Ingresos − gastos operativos",
+      comparable,
+      cm.gop > 0 ? "kpi-good" : "kpi-bad"
+    ),
+    card(
+      "Margen GOP",
+      pct(cm.margen),
+      cm.margen,
+      pm.margen,
+      true,
+      "GOP / ingresos",
+      comparable,
+      cm.margen > 5 ? "kpi-good" : cm.margen > 0 ? "kpi-warn" : "kpi-bad"
+    ),
     card("Ticket promedio", money(cm.ticket), cm.ticket, pm.ticket, true, "Promedio por registro de venta", comparable),
     card(
       "Gastos documentados",
