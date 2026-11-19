@@ -702,6 +702,60 @@ textarea {
   padding: 28px;
 }
 
+.btn-edit {
+  border: 0;
+  border-radius: 8px;
+  background: #e8eef4;
+  color: #23364a;
+  padding: 6px 10px;
+  font-weight: 700;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.btn-edit:hover {
+  background: #d7e3ee;
+}
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  z-index: 100;
+}
+
+.modal-box {
+  background: #fff;
+  border-radius: 15px;
+  max-width: 640px;
+  width: 100%;
+  max-height: 90vh;
+  overflow: auto;
+  padding: 20px;
+  box-shadow: 0 10px 40px rgba(16, 48, 74, 0.25);
+}
+
+.modal-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.modal-close {
+  border: 0;
+  background: none;
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--muted);
+  padding: 0 4px;
+}
+
 @media print {
   .tabs,
   .uploadbox,
