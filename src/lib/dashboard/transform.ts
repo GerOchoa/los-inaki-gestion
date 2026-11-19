@@ -15,6 +15,7 @@ import {
 
 export interface DashRow {
   id: string;
+  rawId: number;
   "FECHA DE OPERACION": string;
   NOMBRE: string;
   "UNIDAD DE NEGOCIO": string;
@@ -38,6 +39,7 @@ function labelOf(options: readonly (readonly [string, string])[], value: string 
 export function gastosToRows(gastos: GastoRow[]): DashRow[] {
   return gastos.map((g) => ({
     id: `gasto-${g.id}`,
+    rawId: g.id,
     "FECHA DE OPERACION": g.fecha_operacion,
     NOMBRE: g.created_by_name || "",
     "UNIDAD DE NEGOCIO": labelOf(UNIDAD_NEGOCIO_GASTO_OPTIONS, g.unidad_negocio),
@@ -72,6 +74,7 @@ export function ventasToRows(ventas: VentaRow[]): DashRow[] {
       if (monto <= 0) continue;
       out.push({
         id: `venta-${v.id}-${unidad}`,
+        rawId: v.id,
         "FECHA DE OPERACION": v.fecha_operacion,
         NOMBRE: v.created_by_name || "",
         "UNIDAD DE NEGOCIO": unidad,
