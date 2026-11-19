@@ -19,6 +19,8 @@ import {
   FORMA_PAGO_OPTIONS,
   TIPO_PAGO_OPTIONS,
 } from "@/lib/validation";
+import type { GastoRow, VentaRow } from "@/lib/types";
+import { EditGastoModal, EditVentaModal } from "./EditModals";
 
 type ViewMode = "dashboard" | "gastos" | "ventas";
 
@@ -113,10 +115,14 @@ async function exportExcel(ventas: DashRow[], gastos: DashRow[]) {
 export default function DashboardWidget({
   ventas,
   gastos,
+  rawGastos,
+  rawVentas,
   lastUpdated,
 }: {
   ventas: DashRow[];
   gastos: DashRow[];
+  rawGastos: GastoRow[];
+  rawVentas: VentaRow[];
   lastUpdated: string;
 }) {
   const router = useRouter();
@@ -135,7 +141,27 @@ export default function DashboardWidget({
   const [gastoUnidad, setGastoUnidad] = useState("");
   const [gastoFormaPago, setGastoFormaPago] = useState("");
   const [gastoTipoPago, setGastoTipoPago] = useState("");
+  const [editGasto, setEditGasto] = useState<GastoRow | null>(null);
+  const [editVenta, setEditVenta] = useState<VentaRow | null>(null);
 
+  // Delegación de eventos: las filas de la tabla admin se renderizan como
+  // HTML crudo (dangerouslySetInnerHTML), así que el botón "Editar" no tiene
+  // onClick propio. Se captura el click burbujeado en el contenedor y se
+  // busca la fila cruda original por id para precargar el modal.
+  function handleTableClick(e: React.MouseEvent<HTMLDivElement>) {
+    const target = (e.target as HTMLElement).closest<HTMLElement>("[data-edit-id]");
+    if (!target) return;
+    const id = Number(target.dataset.editId);
+    const kind = target.dataset.editKind;
+    if (kind === "gastos") {
+      const row = rawGastos.find((g) => g.id === id);
+      if (row) setEditGasto(row);
+    } else if (kind === "ventas") {
+      const row = rawVentas.find((v) => v.id === id);
+      if (row) setEditVenta(row);
+    }
+  }
+  
   const filters: Filters = useMemo(
     () => ({ page: "global", years: selectedYears, months: selectedMonths, days: selectedDays, unit }),
     [selectedYears, selectedMonths, selectedDays, unit]
@@ -333,10 +359,31 @@ export default function DashboardWidget({
               <div dangerouslySetInnerHTML={{ __html: data.restHtml }} />
             </>
           ) : (
-            <div dangerouslySetInnerHTML={{ __html: data.restHtml }} />
+            <div dangerouslySetInnerHTML={{ __html: data.restHtml }} onClick={handleTableClick} />
           )}
         </section>
       </main>
+
+      {editGasto && (
+        <EditGastoModal
+          gasto={editGasto}
+          onClose={() => setEditGasto(null)}
+          onSaved={() => {
+            setEditGasto(null);
+            router.refresh();
+          }}
+        />
+      )}
+      {editVenta && (
+        <EditVentaModal
+          venta={editVenta}
+          onClose={() => setEditVenta(null)}
+          onSaved={() => {
+            setEditVenta(null);
+            router.refresh();
+          }}
+        />
+      )}
 
       <div className="footer">
         GOP = Ingresos − Gastos Operativos. Las inversiones y los retiros familiares se analizan por
