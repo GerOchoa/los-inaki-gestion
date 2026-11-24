@@ -153,14 +153,14 @@ export interface Filters {
   years: number[];
   months: number[];
   days: number[];
-  unit: string; // sólo aplica en la página "global"; "ALL" o unidad canónica
+  units: string[]; // sólo aplica en la página "global"; array vacio = todas
 }
 
 function scopeAllows(r: DashRow, f: Filters): boolean {
   const u = canonUnit(r["UNIDAD DE NEGOCIO"]);
   const cfg = PAGE_CONFIG[f.page];
   if (f.page === "global") {
-    return f.unit === "ALL" || u === f.unit;
+    return f.units.length === 0 || f.units.includes(u);
   }
   return (cfg.scope || []).includes(u);
 }
@@ -509,8 +509,8 @@ function periodBreakdownHtml(cv: DashRow[], cg: DashRow[], f: Filters): string {
 // mes más antiguo con datos.
 const EVOLUTION_START = { y: 2026, m: 8 };
 
-function unitAllows(r: DashRow, unit: string): boolean {
-  return unit === "ALL" || canonUnit(r["UNIDAD DE NEGOCIO"]) === unit;
+function unitAllows(r: DashRow, units: string[]): boolean {
+  return units.length === 0 || units.includes(canonUnit(r["UNIDAD DE NEGOCIO"]));
 }
 
 function monthRange(fromY: number, fromM: number, toY: number, toM: number) {
@@ -541,7 +541,7 @@ interface EvolutionPoint {
 function evolutionSeries(
   ventas: DashRow[],
   gastos: DashRow[],
-  unit: string,
+  units: string[],
   expanded: boolean
 ): { series: EvolutionPoint[]; canExpand: boolean } {
   const latest = latestYM(ventas, gastos);
@@ -556,11 +556,11 @@ function evolutionSeries(
   const series = months.map(({ y, m }) => {
     const v = ventas.filter((r) => {
       const d = dateObj(r);
-      return d && d.getFullYear() === y && d.getMonth() + 1 === m && unitAllows(r, unit);
+      return d && d.getFullYear() === y && d.getMonth() + 1 === m && unitAllows(r, units);
     });
     const g = gastos.filter((r) => {
       const d = dateObj(r);
-      return d && d.getFullYear() === y && d.getMonth() + 1 === m && unitAllows(r, unit);
+      return d && d.getFullYear() === y && d.getMonth() + 1 === m && unitAllows(r, units);
     });
     const mm = metrics(v, g);
     return {
@@ -813,7 +813,7 @@ export function computePage(
 
   const periodTableHtml = periodBreakdownHtml(cv, cg, f);
 
-  const { series, canExpand } = evolutionSeries(ventas, gastos, f.unit, expandedChart);
+  const { series, canExpand } = evolutionSeries(ventas, gastos, f.units, expandedChart);
   const evoTableHtml = evolutionTableHtml(series);
   const evoChartHtml = lineChart(series);
 
