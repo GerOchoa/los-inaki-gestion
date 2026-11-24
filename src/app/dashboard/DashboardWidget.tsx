@@ -132,7 +132,7 @@ export default function DashboardWidget({
   const [selectedYears, setSelectedYears] = useState<number[]>([initial.y]);
   const [selectedMonths, setSelectedMonths] = useState<number[]>([initial.m]);
   const [selectedDays, setSelectedDays] = useState<number[]>([]);
-  const [unit, setUnit] = useState("ALL");
+  const [units, setUnits] = useState<string[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>("dashboard");
   const [expandedChart, setExpandedChart] = useState(false);
@@ -163,8 +163,8 @@ export default function DashboardWidget({
   }
   
   const filters: Filters = useMemo(
-    () => ({ page: "global", years: selectedYears, months: selectedMonths, days: selectedDays, unit }),
-    [selectedYears, selectedMonths, selectedDays, unit]
+    () => ({ page: "global", years: selectedYears, months: selectedMonths, days: selectedDays, units }),
+    [selectedYears, selectedMonths, selectedDays, units]
   );
 
   const data = useMemo(() => {
@@ -234,16 +234,17 @@ export default function DashboardWidget({
           selected={selectedDays.map(String)}
           onChange={(vals) => setSelectedDays(vals.map(Number))}
         />
-        <div>
-          <label>Unidad de negocio</label>
-          <select value={unit} onChange={(e) => setUnit(e.target.value)}>
-            <option value="ALL">Todas</option>
-            <option value="ALOJAMIENTO">ALOJAMIENTO</option>
-            <option value="CAFETERIA">CAFETERIA</option>
-            <option value="EVENTOS">EVENTOS</option>
-            <option value="OTROS">OTROS</option>
-          </select>
-        </div>
+        <MultiSelectCombo
+          label="Unidad de negocio"
+          options={[
+            { value: "ALOJAMIENTO", label: "Alojamiento" },
+            { value: "CAFETERIA", label: "Cafetería" },
+            { value: "EVENTOS", label: "Eventos" },
+            { value: "OTROS", label: "Otros" },
+          ]}
+          selected={units}
+          onChange={setUnits}
+        />
         <div style={{ display: "flex", gap: 8 }}>
           <button
             className="btn secondary"
